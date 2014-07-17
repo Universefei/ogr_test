@@ -24,7 +24,7 @@ int main()
 
 
     /// Get Layer from DataSource.
-    OGRLayer  *poLayer;
+    OGRLayer  *poPgLayer;
     ///  Coder have 3 method in OGRDataSource to generate a OGRLayer.
     /// \===========================================================
     /// [1] GetLayer(int)
@@ -37,29 +37,19 @@ int main()
                                   FROM waterply_900913 \
                                   WHERE ST_Contains( ST_MakeEnvelope(-8584936,4691869,-8561767,4710000),geom)";
     //const char *pszSQLCommand = "SELECT ST_AsText(geom) As fei FROM waterply_900913 where gid=3";
-    poLayer = poPgDS->ExecuteSQL(pszSQLCommand, NULL, NULL);
+    poPgLayer = poPgDS->ExecuteSQL(pszSQLCommand, NULL, NULL);
 
-    if(NULL == poLayer)
-    {
-        printf("Get Result Layers failed\n");
-    }
-    else
-    {
-        printf("Get Result Layer succussful\n");
-    }
+    /// Translate PgLayer to geoJsonLayer
+    /// copyLayer will call CreateLayer which will add new Layer into datasource Layer list.
+    /// Why not new a Layer object, but using CreateLayer function? abstract and concreate!
+    OGRLayer    *poGeojsonLayer = poGeojsonDS->CopyLayer(poPgLayer, "waterply_900913");
 
-    /// Set Query statement here in OGRResultLayer.
-
-    /// Get Layer metadata.
-    OGRFeatureDefn *poFDefn = poLayer->GetLayerDefn();
-    if(NULL != poFDefn)
-    {
-        printf("Get Layer Feature definition successfully\n");
-    }
+    /// Get Layer metadata.(OGRFeatureDefn)
+    OGRFeatureDefn *poFDefn = poPgLayer->GetLayerDefn();
 
     /// Get Feature from Layer.
     OGRFeature *poFeature;
-    poLayer->ResetReading();
+    poPgLayer->ResetReading();
     int idxFeature = 0;
     while( (poFeature = poLayer->GetNextFeature()) != NULL )
     {
