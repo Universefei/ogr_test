@@ -15,12 +15,25 @@ int main()
     poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszDriverName);
     const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='opengeo'";
     OGRDataSource *poPgDS = poDriver->Open(pszConnInfo);
+    if(NULL != poPgDS)
+    {
+        printf("Open poPgDS successfully\n");
+    }
 
     /// Create and Open a GeoJSON DataSource.
     pszDriverName = "GeoJSON";
     poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszDriverName);
-    const char *pszOutFileName = "outGeoJson.gj";
-    OGRDataSource *poGeojsonDS = poDriver->Open(pszOutFileName);
+    if(NULL != poDriver)
+    {
+        printf("Get GeoJSON Driver successfully\n");
+    }
+
+    const char *pszOutFileName = "outGeojson.geojson";
+    OGRDataSource *poGeojsonDS = poDriver->CreateDataSource(pszOutFileName);
+    if(NULL != poGeojsonDS)
+    {
+        printf("Open poGeojsonDS successfully\n");
+    }
 
 
     /// Get Layer from DataSource.
@@ -51,7 +64,7 @@ int main()
     OGRFeature *poFeature;
     poPgLayer->ResetReading();
     int idxFeature = 0;
-    while( (poFeature = poLayer->GetNextFeature()) != NULL )
+    while( (poFeature = poPgLayer->GetNextFeature()) != NULL )
     {
         idxFeature++;
         /// Get Attribute fields.
