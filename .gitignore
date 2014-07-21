@@ -23,3 +23,8 @@
 *.exe
 *.out
 *.app
+
+# Temple / swap files
+*.swp
+*.~
+thumbs.db
