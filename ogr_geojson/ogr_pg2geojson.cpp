@@ -46,7 +46,7 @@ int main()
     //
     //poLayer = poDS->GetLayer(int);
     //poLayer = poDS->GetLayerByName( "waterply_900913" );
-    const char *pszSQLCommand = "SELECT ST_AsText(geom) as geomWKT \
+    const char *pszSQLCommand = "SELECT ST_AsText(geom) as geomWKT\
                                   FROM waterply_900913 \
                                   WHERE ST_Contains( ST_MakeEnvelope(-8584936,4691869,-8561767,4710000),geom)";
     //const char *pszSQLCommand = "SELECT ST_AsText(geom) As fei FROM waterply_900913 where gid=3";
@@ -102,5 +102,6 @@ int main()
         OGRFeature::DestroyFeature( poFeature );
     }
 
-    //GDALClose( poDS );
+    OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poGeojsonDS);
+    return 0;
 }
