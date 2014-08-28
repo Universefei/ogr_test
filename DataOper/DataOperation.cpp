@@ -49,33 +49,43 @@ FileInfo DataOperation::genFeatureFile(const std::string& layerName,
     /// Create and Open a PostgreSQL DataSource.
     const char *pszPGDriverName = "PostgreSQL";
     poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszPGDriverName);
-    const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='opengeo'";
+    const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='china_osm'";
     OGRDataSource *poPgDS = poDriver->Open(pszConnInfo);
 
     std::cout<<"connect db and open driver over"<<std::endl;
     /// Create and Open a GeoJSON DataSource.
     const char *pszGJDriverName = "GeoJson";
     poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszGJDriverName);
-    char pszOutFileName[20];
+    char pszOutFileName[40];
+    memset(pszOutFileName,0,40);
     char randchar[10];
     for(int i=0; i<9; i++)
     {
         randchar[i]='a'+(rand()%25);
     }
     randchar[10]='\0';
+    strcat(pszOutFileName,"/dev/shm/");
     strcat(pszOutFileName,randchar);
     strcat(pszOutFileName,".GJson");
     //const char *pszOutFileName = "fileName";
     OGRDataSource *poGeojsonDS = poDriver->CreateDataSource(pszOutFileName);
 
+                        //WHERE ST_Contains(ST_MakeEnvelope(%f, %f, %f, %f),geom)\
 
     /// Get Layer from DataSource query with an SQL clause.
     CPLString* queryClause = new CPLString;
-    queryClause->Printf("SELECT %s FROM %s WHERE ST_Contains(ST_MakeEnvelope(%f, %f, %f, %f),geom)",
-                         columnStr.c_str(), layerName.c_str(), 
-                         boundingBox.xmin, boundingBox.ymin, 
-                         boundingBox.xmax, boundingBox.ymax);
+    queryClause->Printf("SELECT * \
+                        FROM %s \
+                        ",
+                         //columnStr.c_str(), 
+                         layerName.c_str()//, 
+                         //boundingBox.xmin, boundingBox.ymin, 
+                         //boundingBox.xmax, boundingBox.ymax
+                        );
+
     std::cout<<queryClause->c_str()<<std::endl;
+
+    // Get a OGRPGResultLayer via executing SQL statement
     OGRLayer  *poPgLayer = poPgDS->ExecuteSQL(queryClause->c_str(), NULL, NULL);
     if(NULL == poPgLayer)
     {
@@ -85,6 +95,9 @@ FileInfo DataOperation::genFeatureFile(const std::string& layerName,
 
     /// Duplicate retrived Layer to specific output file format.
     OGRLayer    *poGeojsonLayer = poGeojsonDS->CopyLayer(poPgLayer, "query_result");
+
+//add something
+//
     OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poGeojsonDS);
 
     /// Construct return object.
