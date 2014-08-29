@@ -1,24 +1,34 @@
 #include "PGAccessor.h"
 #include <iostream>
+
 using namespace std;
 
 int main()
 {
-    BBOX boundingbox;
-    boundingbox.xmin = -8584936.075;
-    boundingbox.ymin = 4700671.6768;
-    boundingbox.xmax = -8564829.929;
-    //boundingbox.ymax = 4719819.279;
-    boundingbox.ymax = 4710000.279;
-    charStream column;
-    column.push_back("gid");
-    column.push_back("wat_name");
-    //column.push_back("");
-    column.push_back("geom");
 
-    DataOperation::genFeatureFile("planet_osm_polygon", boundingbox, column);
+    BufList     JsonQue;
+    cout<<"new pgaccessor"<<endl;
+    PGAccessor* ppgIns = new PGAccessor();
 
-    cout<<"will return"<<endl;
+    cout<<"connect database"<<endl;
+    ppgIns->ConnDB("192.168.1.99",
+                    "5432",
+                    "postgres",
+                    "postgres",
+                    "china_osm");
+
+    cout<<"executer sql statement"<<endl;
+    const char* pszSqlState = "SELECT * from planet_osm_polygon where area='yes'";
+    ppgIns->ExecuteSQL(pszSqlState);
+
+    cout<<"dump result to json on disk"<<endl;
+    const char* pszJsonfile = "jsonDisk.fei";
+    ppgIns->DumpRsltToJsonOnDisk(pszJsonfile);
+
+    //
+    //ppgIns->SetQue(&JsonQue);
+    //ppgIns->DumpRsltToJsonOnMemQue();
+
     return 0;
 }
 

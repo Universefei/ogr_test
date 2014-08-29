@@ -2,14 +2,20 @@
 #define DATAOPERATION_H
 
 #include <iostream>
-//#include "OWSService.h"
 #include <vector>
+#include <list>
+
 #include <json.h>
+
 #include <cpl_vsi.h>
 #include <ogrsf_frmts.h>
 
+using namespace std;
+
 
 typedef std::vector<std::string> charStream;
+
+typedef std::list< std::pair<const char*, int>* > BufList;
 
 struct FileInfo
 {
@@ -29,50 +35,6 @@ struct BBOX
 
 
 /****************************************************************************/
-/*                              DataOperation                               */
-/****************************************************************************/
-class DataOperation
-{
-public:
-    DataOperation();
-    ~DataOperation();
-
-    //
-    // WFS Operation
-    //
-    static FileInfo         genFeatureFile(const std::string& layerName, 
-                                            const BBOX& boundingbox,
-                                            const charStream& attrColumn);
-    static FileInfo         describeFeatureType(const std::string &);
-    static FileInfo         getCapabilities();
-
-    int                     setGenFileFormat(const char* string);
-
-    //
-    // Serialization
-    //
-    static void             SerializeToDiskGeoJSON(OGRLayer* pSrcLayer, 
-                                                    const char* fileName);
-    static void             SerializeToMemGeoJSON(OGRLayer* pSrcLayer, 
-                                                    void*   pLocation,
-                                                    int&    rLength);
-
-//Private:
-    //static CPLString genFileFormat_;
-};
-
-
-class PGFilter
-{
-    char*                   sqlStatement_;
-    struct BBOx*                   boundingBox_;
-    char*                   layerName_;
-public:
-    char*                   toSQLStatement();
-
-}
-
-/****************************************************************************/
 /*                          class  PGAccessor                               */
 /****************************************************************************/
 class PGAccessor
@@ -86,46 +48,52 @@ class PGAccessor
     //
     // Output medium
     void*                   thirdObj_;
-    list<char*>*            rsltQue_;
+    BufList*                rsltQue_;
 
-    mutex*                  queMutex_;
+//    mutex*                  queMutex_;
 
 public:
     PGAccessor();
+    //PGAccessor();
+
     ~PGAccessor();
 
+    //
+    // geter and setters
+    //
+    void                    SetSQL(char*);
+    void                    SetQue(BufList*);
+    void                    setMutex();
+    
+    //
+    // DB and connection
     OGRLayer*               ExecuteSQL();
-    OGRLayer*               ExecuteSQL(const char** sqlStatement);
+    OGRLayer*               ExecuteSQL(const char* sqlStatement);
 
-    OGRDataSource*          ConnDB( char* host,
-                                    char* port,
-                                    char* user,
-                                    char* password,
-                                    char* dbname );
+    OGRDataSource*          ConnDB( const char* host,
+                                    const char* port,
+                                    const char* user,
+                                    const char* password,
+                                    const char* dbname );
 
     //
     // Output 
     //
     void                    ShowRsltOnTerm();
-    void*                   DumpRsltToJsonOnDisk(const char* filename);
-    list<char*>*            DumpRsltToJsonOnMemQue();
+    const char*             DumpRsltToJsonOnDisk(const char* filename);
+    BufList*                DumpRsltToJsonOnMemQue();
     void*                   ConvertRsltToObj();
 
 
 
-    //
-    // WFS Operation
-    //
     static FileInfo         genFeatureFile(const std::string& layerName, 
                                             const BBOX& boundingbox,
                                             const charStream& attrColumn);
 
 
-Private:
-    //static CPLString genFileFormat_;
-    void                    GetJsonHeader();
-    void                    GetJsonFeaturePage();
-    void                    GetJsonTail();
+private:
+    void                    GetJsonHeader(char** outFlow, int* retLen);
+    int                     GetJsonFeaturePage(char** outFlow, int* retLen);
 
 };
 #endif  // DATAOPERATION_H

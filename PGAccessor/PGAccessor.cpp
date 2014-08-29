@@ -1,16 +1,19 @@
-#include "ogrsf_frmts.h"
-#include "cpl_string.h"
-#include "PGAccessor.h"
-#include <iostream>
 #include <string.h>
 #include <sys/stat.h>
+#include <iostream>
+
+#include "ogrsf_frmts.h"
+#include "cpl_string.h"
+
 #include "ogrgeojsonwriter.h"
 #include "ogrgeojsonutils.h"
 #include "ogr_spatialref.h"
 #include <json.h>
 
-#define PAGESIZE 500
-#define MEMSIZE  2
+#include "PGAccessor.h"
+
+#define PAGESIZE 1000
+#define MEMSIZE  5
 
 //
 //  Constructor
@@ -22,6 +25,24 @@ PGAccessor::PGAccessor()
 // Destructor
 PGAccessor::~PGAccessor()
 {
+}
+
+/****************************************************************************/
+/*                                SetSQL()                                  */
+/****************************************************************************/
+
+void PGAccessor::SetSQL(char* sqlstatement)
+{
+    sqlStatement_ = sqlstatement;
+}
+
+/****************************************************************************/
+/*                                SetSQL()                                  */
+/****************************************************************************/
+
+void PGAccessor::SetQue(BufList* buflist)
+{
+    rsltQue_ = buflist;
 }
 
 /****************************************************************************/
@@ -93,7 +114,6 @@ FileInfo PGAccessor::genFeatureFile(const std::string& layerName,
     }
     delete(queryClause);
 
-    SerializeToDiskGeoJSON(poPgLayer, pszOutFileName);
 
     OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poPgDS);
 
@@ -116,7 +136,7 @@ FileInfo PGAccessor::genFeatureFile(const std::string& layerName,
 /*                               ExecuteSQL()                               */
 /****************************************************************************/
 
-OGRLayer* ExecuteSQL()
+OGRLayer* PGAccessor::ExecuteSQL()
 {
 
     OGRLayer* pRetLayer = NULL;
@@ -134,7 +154,7 @@ OGRLayer* ExecuteSQL()
 /****************************************************************************/
 /*                               ExecuteSQL()                               */
 /****************************************************************************/
-OGRLayer* ExecuteSQL(const char** sqlStatement)
+OGRLayer* PGAccessor::ExecuteSQL(const char* sqlStatement)
 {
     OGRLayer* pRetLayer = NULL;
     if(!sqlStatement)
@@ -143,10 +163,36 @@ OGRLayer* ExecuteSQL(const char** sqlStatement)
     }
     else
     {
-        sqlStatement_ = *sqlStatement;
+        sqlStatement_ = const_cast<char*>(sqlStatement);
         pRetLayer = pgDS_->ExecuteSQL(sqlStatement_, NULL, NULL);
+
     }
+    pRsltLayer_ = pRetLayer;
     return pRetLayer;
+}
+
+/*****************************************************************************/
+/*                                      ConnDB()                             */
+/*****************************************************************************/
+
+OGRDataSource* PGAccessor::ConnDB( const char* host,
+                                const char* port,
+                                const char* user,
+                                const char* password,
+                                const char* dbname )
+{
+    char* pszConnInfo = (char*)malloc(sizeof(char)*200);
+    sprintf(pszConnInfo,"PG: host='%s' port='%s' user='%s' password='%s' dbname='%s'",
+                            host,port,user,password,dbname);
+
+    OGRRegisterAll();
+    const char *pszPGDriverName = "PostgreSQL";
+    OGRSFDriver* poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszPGDriverName);
+
+    OGRDataSource *poPgDS = poDriver->Open(pszConnInfo);
+
+    pgDS_ = poPgDS;
+    return poPgDS;
 }
 
 /*****************************************************************************/
@@ -230,14 +276,19 @@ void PGAccessor::ShowRsltOnTerm()
 /*                          DumpRsltToJsonOnDisk()                           */
 /*****************************************************************************/
 
-void PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
+const char* PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
 {
+    cout <<"start---------------------------------"<<endl;
     FILE* fpOut_ = VSIFOpenL( pszFilename, "w");
+    
+    cout <<"Header---------------------------------"<<endl;
     VSIFPrintfL( fpOut_, "{\n\"type\": \"FeatureCollection\",\n" );
 /* ------------------------------------------------------------------------- */
 /*      Serialize metadata                                                   */
 /* ------------------------------------------------------------------------- */
+    cout <<"SRS---------------------------------"<<endl;
     OGRSpatialReference *poSRS = pRsltLayer_->GetSpatialRef();
+    cout <<"GetSpatialRef---------------------------------"<<endl;
     if (poSRS)
     {
         const char* pszAuthority = poSRS->GetAuthorityName(NULL);
@@ -273,12 +324,13 @@ void PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
 /* ------------------------------------------------------------------------- */
 /*      Serialize Feature                                                    */
 /* ------------------------------------------------------------------------- */
+    cout <<"start features---------------------------------"<<endl;
     VSIFPrintfL( fpOut_, "\"features\": [\n" );
 
     int firstFlg = 1;
     while(true)
     {
-        OGRFeature* pSrcFeature = pRsltLayer->GetNextFeature();
+        OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
         if(!pSrcFeature)
         {
             std::cout<<"OVER"<<std::endl;
@@ -286,6 +338,8 @@ void PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
         }
         else
         {
+            //cout <<"start features---------------------------------"<<pSrcFeature->GetFID()<<endl;
+
             json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
             if(firstFlg == 1)
             {
@@ -303,87 +357,54 @@ void PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
     }
     VSIFPrintfL( fpOut_, "\n]" );
     VSIFPrintfL( fpOut_, "\n}\n" );
+    cout <<"start features--------------------------over   "<<endl;
+
+    return pszFilename;
 }
 
 /*****************************************************************************/
 /*                          DumpRsltToJsonOnMemQue()                         */
 /*****************************************************************************/
 
-void PGAccessor::DumpRsltToJsonOnMemQue(OGRLayer* pSrcLayer,void* pLocation, int& length)
+BufList* PGAccessor::DumpRsltToJsonOnMemQue()
 {
-
-    OGRSpatialReference *poSRS = pSrcLayer->GetSpatialRef();
-    if (poSRS)
+    if(!rsltQue_)
     {
-        const char* pszAuthority = poSRS->GetAuthorityName(NULL);
-        const char* pszAuthorityCode = poSRS->GetAuthorityCode(NULL);
-        if (pszAuthority != NULL && pszAuthorityCode != NULL &&
-                strcmp(pszAuthority, "EPSG") == 0)
-        {
-
-            json_object* poObjCRS = json_object_new_object();
-            json_object_object_add(poObjCRS, "type",
-                    json_object_new_string("name"));
-
-            json_object* poObjProperties = json_object_new_object();
-            json_object_object_add(poObjCRS, "properties", poObjProperties);
-
-            if (strcmp(pszAuthorityCode, "4326") == 0)
-            {
-                json_object_object_add(poObjProperties, "name",
-                        json_object_new_string("urn:ogc:def:crs:OGC:1.3:CRS84"));
-            }
-            else
-            {
-                json_object_object_add(poObjProperties, "name",
-                        json_object_new_string(CPLSPrintf("urn:ogc:def:crs:EPSG::%s", pszAuthorityCode)));
-            }
-
-            const char* pszCRS = json_object_to_json_string( poObjCRS );
-            VSIFPrintfL( fpOut_, "\"crs\": %s,\n", pszCRS );
-
-            json_object_put(poObjCRS);
-        }
+        std::cout<<"BufList is Null"<<std::endl;
+        return NULL;
     }
-/* ------------------------------------------------------------------------- */
-/*      Serialize Feature                                                    */
-/* ------------------------------------------------------------------------- */
-    /* the line befor starting write feature data */
-    /* control study through geojson outfile */
-    VSIFPrintfL( fpOut_, "\"features\": [\n" );
+    
+    char* headerBuf = NULL;
+    int bufLen = 0;
+    GetJsonHeader(&headerBuf,&bufLen);
 
-    int firstFlg = 1;
-    ///////////////////////////////from OGRGeoJSONWriterLayer::CreateFeature()
-    while(true)
+    std::pair<const char*, int> plistHeaderNode(headerBuf,bufLen);
+    cout<<"push back header----------------------"<<endl;
+    rsltQue_->push_back(&plistHeaderNode);
+    
+    int endFlg = 0;
+    int pageCount = 0;
+    while(!endFlg)
     {
-        OGRFeature* pSrcFeature = pSrcLayer->GetNextFeature();
-        if(!pSrcFeature)
-        {
-            std::cout<<"OVER"<<std::endl;
-            break;
-        }
-        else
-        {
-            json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
-            if(firstFlg == 1)
-                VSIFPrintfL(fpOut_, ",\n");
-            firstFlg = 0;
-            VSIFPrintfL( fpOut_, "%s", json_object_to_json_string( poObj ) );
-            json_object_put( poObj );
-        }
+        pageCount++;
+        char* featurePage = NULL;
+        int pageLen = 0;
+        endFlg = GetJsonFeaturePage(&featurePage, &pageLen);
+        std::pair<const char*, int> pfeaPage(featurePage,pageLen);
+        //cout<<"push back Page----------------------"<<pageCount<<endl;
+        rsltQue_->push_back(&pfeaPage);
     }
 
-    /////////////////////from OGRGeoJSONWriterLayer::~OGRGeoJSONWriterLayer()
-    // tail of GeoJSON file
-    VSIFPrintfL( fpOut_, "\n]" );
-    VSIFPrintfL( fpOut_, "\n}\n" );
+    cout<<"push back over----------------------"<<endl;
+
+    return rsltQue_;
 
 }
 
 /*****************************************************************************/
 /*                               ConvertRsltToObj()                          */
 /*****************************************************************************/
-void* ConvertRsltToObj()
+void* PGAccessor::ConvertRsltToObj()
 {
 
 }
@@ -391,7 +412,8 @@ void* ConvertRsltToObj()
 /*****************************************************************************/
 /*                               GetJsonHeader()                             */
 /*****************************************************************************/
-void PGAccessor::GetJsonHeader(const char** outFlow, int* retLen)
+
+void PGAccessor::GetJsonHeader(char** outFlow, int* retLen)
 {
     *outFlow = (char*)malloc(sizeof(char)*1024*1024*MEMSIZE);
 
@@ -440,7 +462,7 @@ void PGAccessor::GetJsonHeader(const char** outFlow, int* retLen)
 /*                          GetJsonFeaturePage()                             */
 /*****************************************************************************/
 
-int PGAccessor::GetJsonFeaturePage(const char** outFlow, int* retLen)
+int PGAccessor::GetJsonFeaturePage(char** outFlow, int* retLen)
 {
     *outFlow = (char*)malloc(sizeof(char)*1024*1024*MEMSIZE);
 
