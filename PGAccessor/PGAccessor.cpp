@@ -12,8 +12,7 @@
 
 #include "PGAccessor.h"
 
-#define PAGESIZE 1000
-#define MEMSIZE  5
+#define PAGESIZE 500
 
 //
 //  Constructor
@@ -37,7 +36,7 @@ void PGAccessor::SetSQL(char* sqlstatement)
 }
 
 /****************************************************************************/
-/*                                SetSQL()                                  */
+/*                                SetQue()                                  */
 /****************************************************************************/
 
 void PGAccessor::SetQue(BufList* buflist)
@@ -271,96 +270,28 @@ void PGAccessor::ShowRsltOnTerm()
     printf( "\n]" );
     printf( "\n}\n" );
 }
-
 /*****************************************************************************/
 /*                          DumpRsltToJsonOnDisk()                           */
 /*****************************************************************************/
-
 const char* PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
 {
-    cout <<"start---------------------------------"<<endl;
-    FILE* fpOut_ = VSIFOpenL( pszFilename, "w");
-    
-    cout <<"Header---------------------------------"<<endl;
-    VSIFPrintfL( fpOut_, "{\n\"type\": \"FeatureCollection\",\n" );
-/* ------------------------------------------------------------------------- */
-/*      Serialize metadata                                                   */
-/* ------------------------------------------------------------------------- */
-    cout <<"SRS---------------------------------"<<endl;
-    OGRSpatialReference *poSRS = pRsltLayer_->GetSpatialRef();
-    cout <<"GetSpatialRef---------------------------------"<<endl;
-    if (poSRS)
+    FILE*   fpOut_ = VSIFOpenL( pszFilename, "w");
+
+    char*   segBuf = NULL;
+    int     segLen = 0;  
+    GetJsonHeader(&segBuf,segLen);
+    VSIFPrintfL( fpOut_, "%s",segBuf );
+
+    int     endFlg = 0;
+    while(!endFlg)
     {
-        const char* pszAuthority = poSRS->GetAuthorityName(NULL);
-        const char* pszAuthorityCode = poSRS->GetAuthorityCode(NULL);
-        if (pszAuthority != NULL && pszAuthorityCode != NULL &&
-                strcmp(pszAuthority, "EPSG") == 0)
-        {
-
-            json_object* poObjCRS = json_object_new_object();
-            json_object_object_add(poObjCRS, "type",
-                    json_object_new_string("name"));
-
-            json_object* poObjProperties = json_object_new_object();
-            json_object_object_add(poObjCRS, "properties", poObjProperties);
-
-            if (strcmp(pszAuthorityCode, "4326") == 0)
-            {
-                json_object_object_add(poObjProperties, "name",
-                        json_object_new_string("urn:ogc:def:crs:OGC:1.3:CRS84"));
-            }
-            else
-            {
-                json_object_object_add(poObjProperties, "name",
-                        json_object_new_string(CPLSPrintf("urn:ogc:def:crs:EPSG::%s", pszAuthorityCode)));
-            }
-
-            const char* pszCRS = json_object_to_json_string( poObjCRS );
-            VSIFPrintfL( fpOut_, "\"crs\": %s,\n", pszCRS );
-
-            json_object_put(poObjCRS);
-        }
+        endFlg = GetJsonFeaturePage(&segBuf,segLen);
+        VSIFPrintfL( fpOut_, "%s",segBuf );
     }
-/* ------------------------------------------------------------------------- */
-/*      Serialize Feature                                                    */
-/* ------------------------------------------------------------------------- */
-    cout <<"start features---------------------------------"<<endl;
-    VSIFPrintfL( fpOut_, "\"features\": [\n" );
-
-    int firstFlg = 1;
-    while(true)
-    {
-        OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
-        if(!pSrcFeature)
-        {
-            std::cout<<"OVER"<<std::endl;
-            break;
-        }
-        else
-        {
-            //cout <<"start features---------------------------------"<<pSrcFeature->GetFID()<<endl;
-
-            json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
-            if(firstFlg == 1)
-            {
-                VSIFPrintfL(fpOut_, "\n");
-            }
-            else
-            {
-                VSIFPrintfL(fpOut_, ",\n");
-            }
-
-            firstFlg = 0;
-            VSIFPrintfL( fpOut_, "%s", json_object_to_json_string( poObj ) );
-            json_object_put( poObj );
-        }
-    }
-    VSIFPrintfL( fpOut_, "\n]" );
-    VSIFPrintfL( fpOut_, "\n}\n" );
-    cout <<"start features--------------------------over   "<<endl;
-
-    return pszFilename;
 }
+/*****************************************************************************/
+/*                          DumpRsltToJsonOnDisk()                           */
+/*****************************************************************************/
 
 /*****************************************************************************/
 /*                          DumpRsltToJsonOnMemQue()                         */
@@ -374,14 +305,26 @@ BufList* PGAccessor::DumpRsltToJsonOnMemQue()
         return NULL;
     }
     
+    //
+    // Dump Json Header
+    //
     char* headerBuf = NULL;
     int bufLen = 0;
-    GetJsonHeader(&headerBuf,&bufLen);
+    GetJsonHeader(&headerBuf,bufLen);
 
-    std::pair<const char*, int> plistHeaderNode(headerBuf,bufLen);
+    //std::pair<char*, int> plistHeaderNode(headerBuf,bufLen);
+    std::pair<char*, int> *plistHeaderNode = new pair<char*,int>(headerBuf,bufLen);
+    /*
     cout<<"push back header----------------------"<<endl;
-    rsltQue_->push_back(&plistHeaderNode);
+    cout<<"header length"<<endl<<plistHeaderNode->second<<endl;
+    cout<<"header content"<<endl<<plistHeaderNode->first<<endl;
+    */
+
+    rsltQue_->push_back(plistHeaderNode);
     
+    //
+    // Dump Json Feature Page
+    //
     int endFlg = 0;
     int pageCount = 0;
     while(!endFlg)
@@ -389,13 +332,17 @@ BufList* PGAccessor::DumpRsltToJsonOnMemQue()
         pageCount++;
         char* featurePage = NULL;
         int pageLen = 0;
-        endFlg = GetJsonFeaturePage(&featurePage, &pageLen);
-        std::pair<const char*, int> pfeaPage(featurePage,pageLen);
-        //cout<<"push back Page----------------------"<<pageCount<<endl;
-        rsltQue_->push_back(&pfeaPage);
-    }
+        endFlg = GetJsonFeaturePage(&featurePage, pageLen);
+        //std::pair<char*, int> pfeaPage(featurePage,pageLen);
+        std::pair<char*, int> *pfeaPage = new pair<char*, int>(featurePage,pageLen);
+        /*
+        cout<<"prompt from DUmpRsltToJsonOnMemQue ----------------"<<endl;
+        cout<<"feature page size: "<<endl<<pfeaPage->second<<endl;
+        cout<<"feature page content: "<<endl<<pfeaPage->first<<endl;
+        */
 
-    cout<<"push back over----------------------"<<endl;
+        rsltQue_->push_back(pfeaPage);
+    }
 
     return rsltQue_;
 
@@ -413,11 +360,13 @@ void* PGAccessor::ConvertRsltToObj()
 /*                               GetJsonHeader()                             */
 /*****************************************************************************/
 
-void PGAccessor::GetJsonHeader(char** outFlow, int* retLen)
+void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
 {
-    *outFlow = (char*)malloc(sizeof(char)*1024*1024*MEMSIZE);
+    char pszstackBuf[1024*1024];
+    memset(pszstackBuf,0,1024*1024);
 
-    sprintf( *outFlow, "{\n\"type\": \"FeatureCollection\",\n" );
+    sprintf( pszstackBuf, "{\n\"type\": \"FeatureCollection\",\n" );
+    retLen = strlen(pszstackBuf);
 
 /* ------------------------------------------------------------------------- */
 /*      Serialize metadata                                                   */
@@ -449,62 +398,85 @@ void PGAccessor::GetJsonHeader(char** outFlow, int* retLen)
             }
 
             const char* pszCRS = json_object_to_json_string( poObjCRS );
-            sprintf( *outFlow, "\"crs\": %s,\n", pszCRS );
+
+            sprintf( pszstackBuf+retLen, "\"crs\": %s,\n", pszCRS );
+            retLen = strlen(pszstackBuf);
 
             json_object_put(poObjCRS);
         }
     }
 
-    *retLen = strlen(*outFlow);
+    sprintf( pszstackBuf+retLen, "\n\"features\": [" );
+    retLen = strlen(pszstackBuf);
+
+    // fetch first feature
+    OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
+    json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
+    const char* pszfeature = json_object_to_json_string( poObj );
+    sprintf( pszstackBuf+retLen, "\n%s", const_cast<char*>(pszfeature) );
+    retLen = strlen(pszstackBuf);
+
+    // copy data from stack to heap.
+    char* pszheapHead = (char*)malloc(retLen); 
+    strcpy(pszheapHead,pszstackBuf);
+
+    *outFlow = pszheapHead;
 }
 
 /*****************************************************************************/
 /*                          GetJsonFeaturePage()                             */
 /*****************************************************************************/
 
-int PGAccessor::GetJsonFeaturePage(char** outFlow, int* retLen)
+int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
 {
-    *outFlow = (char*)malloc(sizeof(char)*1024*1024*MEMSIZE);
+    // allocate stack memory
+    char pszstackBuf[1024*1024*8];
+    memset(pszstackBuf,0,1024*1024*8);
+    char fBuf[1024*100];
+    memset(fBuf,0,1024*100);
 
+    retLen = 0;
     int endFlg = 0;
     int firstFlg = 1;
     int featureCount = PAGESIZE;
-    *retLen = 0;
 
+    // loading feature from OGRLayer to fill one feature page 
     while(featureCount)
     {
         featureCount--;
 
         OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
-        // if no feature left
+        // if no feature left, write json file tail.
         if(!pSrcFeature)
         {
             endFlg = 1;
-            sprintf( *outFlow, "\n]" );
-            sprintf( *outFlow, "\n}\n" );
+            sprintf( fBuf, "\n]\n}\n" );
+            retLen += strlen(fBuf);
+            strcat(pszstackBuf,fBuf);
+            memset(fBuf,0,strlen(fBuf));
             break;
         }
+        // fetch feature.
         else
         {
             json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
-            if(firstFlg == 1)
-            {
-                sprintf(*outFlow, "\n");
-                *retLen++;
-                firstFlg = 0;
-            }
-            else
-            {
-                sprintf(*outFlow, ",\n");
-                *retLen += 2;
-            }
-            const char* pszfStr = json_object_to_json_string( poObj );
+            const char* pszfeature = json_object_to_json_string( poObj );
+            sprintf( fBuf, ",\n%s", const_cast<char*>(pszfeature) );
+            retLen += strlen( fBuf );
+            strcat(pszstackBuf,fBuf);
 
-            *retLen += strlen(pszfStr);
-            sprintf( *outFlow, "%s", pszfStr );
             json_object_put( poObj );
         }
+
+        memset(fBuf,0,strlen(fBuf));
     }
+
+    // copy data from stack to heap.
+    char* pszheapHead = (char*)malloc(retLen);
+    strcpy(pszheapHead,pszstackBuf);//XXX:not using memcpy.
+
+    *outFlow = pszheapHead;
+
     return endFlg;
 }
 

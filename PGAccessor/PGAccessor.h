@@ -15,7 +15,7 @@ using namespace std;
 
 typedef std::vector<std::string> charStream;
 
-typedef std::list< std::pair<const char*, int>* > BufList;
+typedef list< pair< char*,int>* > BufList;
 
 struct FileInfo
 {
@@ -92,8 +92,8 @@ public:
 
 
 private:
-    void                    GetJsonHeader(char** outFlow, int* retLen);
-    int                     GetJsonFeaturePage(char** outFlow, int* retLen);
+    void                    GetJsonHeader(char** outFlow, int& retLen);
+    int                     GetJsonFeaturePage(char** outFlow, int& retLen);
 
 };
 #endif  // DATAOPERATION_H
