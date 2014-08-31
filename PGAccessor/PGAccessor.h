@@ -15,16 +15,7 @@ using namespace std;
 
 
 typedef vector<string> fieldVec;
-
 typedef list< pair< char*,int>* > BufList;
-
-struct FileInfo
-{
-    std::string fileName;
-    int fileId;
-    long size;
-    long pos;
-};
 
 struct BBOX
 {
@@ -85,10 +76,6 @@ public:
     const char*             DumpRsltToJsonOnDisk(const char* filename);
     BufList*                DumpRsltToJsonOnMemQue();
     void*                   ConvertRsltToObj();
-
-    static FileInfo         genFeatureFile(const std::string& layerName, 
-                                            const BBOX& boundingbox,
-                                            const fieldVec& attrColumn);
 
 private:
     void                    GetJsonHeader(char** outFlow, int& retLen);

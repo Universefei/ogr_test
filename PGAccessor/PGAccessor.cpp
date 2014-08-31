@@ -13,9 +13,10 @@
 #include "PGAccessor.h"
 
 #define PAGESIZE 500
-//#define PAGESIZE 1000
 
-//
+/****************************************************************************/
+/*                              PGAccessor()                                */
+/****************************************************************************/
 //  Constructor
 PGAccessor::PGAccessor()
 {
@@ -23,14 +24,14 @@ PGAccessor::PGAccessor()
     pRsltLayer_ = NULL;
 }
 
-//
+/****************************************************************************/
+/*                             ~PGAccessor()                                */
+/****************************************************************************/
 // Destructor
 PGAccessor::~PGAccessor()
 {
     delete rsltQue_;
     OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(pgDS_);
-
-
 }
 
 /****************************************************************************/
@@ -190,7 +191,7 @@ const char* PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
     //fclose(fpOut_);
 }
 /*****************************************************************************/
-/*                          DumpRsltToJsonOnMemQue()                           */
+/*                          DumpRsltToJsonOnMemQue()                         */
 /*****************************************************************************/
 
 BufList* PGAccessor::DumpRsltToJsonOnMemQue()
@@ -340,9 +341,9 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
     sprintf( pszstackBuf, "{\n\"type\": \"FeatureCollection\",\n" );
     retLen = strlen(pszstackBuf);
 
-/* ------------------------------------------------------------------------- */
-/*      Serialize metadata                                                   */
-/* ------------------------------------------------------------------------- */
+    //
+    // Serialize metadata                                       
+    //
     if(NULL==pRsltLayer_)
         return;
     OGRSpatialReference *poSRS = pRsltLayer_->GetSpatialRef();
@@ -383,7 +384,9 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
     sprintf( pszstackBuf+retLen, "\n\"features\": [" );
     retLen = strlen(pszstackBuf);
 
+    //
     // fetch first feature
+    //
     OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
     json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
     const char* pszfeature = json_object_to_json_string( poObj );
