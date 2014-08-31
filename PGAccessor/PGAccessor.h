@@ -1,9 +1,10 @@
-#ifndef DATAOPERATION_H
-#define DATAOPERATION_H
+#ifndef PGACCESSOR_H
+#define PGACCESSOR_H
 
 #include <iostream>
 #include <vector>
 #include <list>
+#include <pthread.h>
 
 #include <json.h>
 
@@ -13,7 +14,7 @@
 using namespace std;
 
 
-typedef std::vector<std::string> charStream;
+typedef vector<string> fieldVec;
 
 typedef list< pair< char*,int>* > BufList;
 
@@ -50,27 +51,27 @@ class PGAccessor
     void*                   thirdObj_;
     BufList*                rsltQue_;
 
-//    mutex*                  queMutex_;
+    pthread_mutex_t         mutex_;
 
 public:
     PGAccessor();
-    //PGAccessor();
-
     ~PGAccessor();
 
     //
     // geter and setters
     //
     void                    SetSQL(char*);
-    void                    SetQue(BufList*);
-    void                    setMutex();
+    void                    SetSQL(const string& layerName,
+                                        const BBOX& boundingBox,
+                                        const fieldVec& attrColumn);
+    BufList*                GetRsltList();
     bool                    IsQueEmpty();
+    int                     GetNextJsonSeg(pair<char*,int>**);
+
     
     //
     // DB and connection
     OGRLayer*               ExecuteSQL();
-    OGRLayer*               ExecuteSQL(const char* sqlStatement);
-
     OGRDataSource*          ConnDB( const char* host,
                                     const char* port,
                                     const char* user,
@@ -85,16 +86,13 @@ public:
     BufList*                DumpRsltToJsonOnMemQue();
     void*                   ConvertRsltToObj();
 
-
-
     static FileInfo         genFeatureFile(const std::string& layerName, 
                                             const BBOX& boundingbox,
-                                            const charStream& attrColumn);
-
+                                            const fieldVec& attrColumn);
 
 private:
     void                    GetJsonHeader(char** outFlow, int& retLen);
     int                     GetJsonFeaturePage(char** outFlow, int& retLen);
 
 };
-#endif  // DATAOPERATION_H
+#endif  // PGACCESSOR_H

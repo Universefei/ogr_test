@@ -13,13 +13,14 @@
 #include "PGAccessor.h"
 
 #define PAGESIZE 500
+//#define PAGESIZE 1000
 
 //
 //  Constructor
 PGAccessor::PGAccessor()
 {
     rsltQue_= new BufList();
-
+    pRsltLayer_ = NULL;
 }
 
 //
@@ -27,7 +28,7 @@ PGAccessor::PGAccessor()
 PGAccessor::~PGAccessor()
 {
     delete rsltQue_;
-    OGRSFDriverRegistrar->GetRegistrar()->ReleaseDataSource(pgDS_);
+    OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(pgDS_);
 
 
 }
@@ -39,25 +40,88 @@ PGAccessor::~PGAccessor()
 void PGAccessor::SetSQL(char* sqlstatement)
 {
     sqlStatement_ = sqlstatement;
+    ExecuteSQL();
 }
 
 /****************************************************************************/
-/*                                SetQue()                                  */
+/*                                SetSQL()                                  */
 /****************************************************************************/
 
-void PGAccessor::SetQue(BufList* buflist)
+void PGAccessor::SetSQL(const string& layerName, 
+        const BBOX& boundingBox, const fieldVec& attrColumn)
 {
-    rsltQue_ = buflist;
+    
+    // make all column name in one string
+    string columnStr = "";
+    int i=0;
+    while (i<attrColumn.size()-1)
+    {
+        columnStr+=attrColumn[i];
+        columnStr+=",";
+        i++;
+    }
+    columnStr+=attrColumn[i];
+
+    char* pszsqlstat=(char*)malloc(1024*10);
+    sprintf(pszsqlstat,"SELECT %s FROM %s \
+                                  WHERE ST_Contains( ST_MakeEnvelope(%f,%f,%f,%f),way)",
+                         columnStr.c_str(), 
+                         layerName.c_str() ,
+                         boundingBox.xmin, boundingBox.ymin, 
+                         boundingBox.xmax, boundingBox.ymax
+                         );
+
+    sqlStatement_ = pszsqlstat;
+    ExecuteSQL();
+}
+
+/****************************************************************************/
+/*                              GetRsltList()                               */
+/****************************************************************************/
+
+BufList* PGAccessor::GetRsltList()
+{
+    return rsltQue_;
 }
 
 /****************************************************************************/
 /*                                IsQueEmpty()                              */
 /****************************************************************************/
 
-bool IsQueEmpty()
+bool PGAccessor::IsQueEmpty()
 {
-    return rsltQue_.isEmpty();
+    pthread_mutex_lock(&mutex_);
+    bool isEmpty = rsltQue_->empty();
+    pthread_mutex_unlock(&mutex_);
+    return isEmpty;
 }
+
+/****************************************************************************/
+/*                               GetNextJsonSeg()                           */
+/****************************************************************************/
+
+/**
+ * @brief:  pop a node from result list.
+ *
+ * @return: 1 if reach the end and returned pair is unuseable, else return 0.
+ * @ppair:  a BufList node get from the front.
+ */
+int PGAccessor::GetNextJsonSeg(pair<char*,int>** ppair)
+{
+    pthread_mutex_lock(&mutex_);
+    *ppair = rsltQue_->front();
+    rsltQue_->pop_front();
+    pthread_mutex_unlock(&mutex_);
+
+    // check if reach the end.
+    if( NULL==(*ppair)->first && (*ppair)->second==0 )
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 /****************************************************************************/
 /*                               ExecuteSQL()                               */
 /****************************************************************************/
@@ -68,30 +132,12 @@ OGRLayer* PGAccessor::ExecuteSQL()
     OGRLayer* pRetLayer = NULL;
     if(!sqlStatement_)
     {
-        std::cout<<"no sql statement to query"<<std::endl;
+        cout<<"no sql statement to query"<<endl;
     }
     else
     {
         pRetLayer = pgDS_->ExecuteSQL(sqlStatement_, NULL, NULL);
-    }
-    return pRetLayer;
-}
-
-/****************************************************************************/
-/*                               ExecuteSQL()                               */
-/****************************************************************************/
-OGRLayer* PGAccessor::ExecuteSQL(const char* sqlStatement)
-{
-    OGRLayer* pRetLayer = NULL;
-    if(!sqlStatement)
-    {
-        std::cout<<"no sql statement to query"<<std::endl;
-    }
-    else
-    {
-        sqlStatement_ = const_cast<char*>(sqlStatement);
-        pRetLayer = pgDS_->ExecuteSQL(sqlStatement_, NULL, NULL);
-
+        cout<<"executing:"<<endl<<sqlStatement_<<endl;
     }
     pRsltLayer_ = pRetLayer;
     return pRetLayer;
@@ -107,7 +153,7 @@ OGRDataSource* PGAccessor::ConnDB( const char* host,
                                 const char* password,
                                 const char* dbname )
 {
-    char* pszConnInfo = (char*)malloc(sizeof(char)*200);
+    char* pszConnInfo = (char*)malloc(sizeof(char)*1000);
     sprintf(pszConnInfo,"PG: host='%s' port='%s' user='%s' password='%s' dbname='%s'",
                             host,port,user,password,dbname);
 
@@ -119,6 +165,91 @@ OGRDataSource* PGAccessor::ConnDB( const char* host,
 
     pgDS_ = poPgDS;
     return poPgDS;
+}
+
+/*****************************************************************************/
+/*                          DumpRsltToJsonOnDisk()                           */
+/*****************************************************************************/
+const char* PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
+{
+    FILE*   fpOut_ = VSIFOpenL( pszFilename, "w");
+
+    char*   segBuf = NULL;
+    int     segLen = 0;  
+    GetJsonHeader(&segBuf,segLen);
+    VSIFPrintfL( fpOut_, "%s",segBuf );
+
+    int     endFlg = 0;
+    int     pageCount = 0;
+    while(!endFlg)
+    {
+        endFlg = GetJsonFeaturePage(&segBuf,segLen);
+        VSIFPrintfL( fpOut_, "%s",segBuf );
+    }
+
+    //fclose(fpOut_);
+}
+/*****************************************************************************/
+/*                          DumpRsltToJsonOnMemQue()                           */
+/*****************************************************************************/
+
+BufList* PGAccessor::DumpRsltToJsonOnMemQue()
+{
+    if(!rsltQue_)
+    {
+        cout<<"BufList is Null"<<std::endl;
+        return NULL;
+    }
+    
+    //
+    // Dump Json Header
+    //
+    char* headerBuf = NULL;
+    int bufLen = 0;
+    GetJsonHeader(&headerBuf,bufLen);
+
+    //std::pair<char*, int> plistHeaderNode(headerBuf,bufLen);
+    std::pair<char*, int> *plistHeaderNode = new pair<char*,int>(headerBuf,bufLen);
+    pthread_mutex_lock(&mutex_);
+    rsltQue_->push_back(plistHeaderNode);
+    pthread_mutex_unlock(&mutex_);
+    
+    //
+    // Dump Json Feature Page
+    //
+    int endFlg = 0;
+    int pageCount = 0;
+    while(!endFlg)
+    {
+        pageCount++;
+        char* featurePage = NULL;
+        int pageLen = 0;
+        endFlg = GetJsonFeaturePage(&featurePage, pageLen);
+        //std::pair<char*, int> pfeaPage(featurePage,pageLen);
+        std::pair<char*, int> *pfeaPage = new pair<char*, int>(featurePage,pageLen);
+        pthread_mutex_lock(&mutex_);
+        rsltQue_->push_back(pfeaPage);
+        pthread_mutex_unlock(&mutex_);
+    }
+
+    //
+    // push back Json end segement flag
+    //
+    pair<char*, int> *pendSegFlag = new pair<char*, int>(NULL,0);
+    pthread_mutex_lock(&mutex_);
+    rsltQue_->push_back(pendSegFlag);
+    pthread_mutex_unlock(&mutex_);
+
+    return rsltQue_;
+
+}
+
+/*****************************************************************************/
+/*                               ConvertRsltToObj()                          */
+/*****************************************************************************/
+void* PGAccessor::ConvertRsltToObj()
+{
+
 }
 
 /*****************************************************************************/
@@ -198,99 +329,13 @@ void PGAccessor::ShowRsltOnTerm()
     printf( "\n}\n" );
 }
 /*****************************************************************************/
-/*                          DumpRsltToJsonOnDisk()                           */
-/*****************************************************************************/
-const char* PGAccessor::DumpRsltToJsonOnDisk(const char* pszFilename)
-{
-    FILE*   fpOut_ = VSIFOpenL( pszFilename, "w");
-
-    char*   segBuf = NULL;
-    int     segLen = 0;  
-    GetJsonHeader(&segBuf,segLen);
-    VSIFPrintfL( fpOut_, "%s",segBuf );
-
-    int     endFlg = 0;
-    while(!endFlg)
-    {
-        endFlg = GetJsonFeaturePage(&segBuf,segLen);
-        VSIFPrintfL( fpOut_, "%s",segBuf );
-    }
-}
-/*****************************************************************************/
-/*                          DumpRsltToJsonOnDisk()                           */
-/*****************************************************************************/
-
-/*****************************************************************************/
-/*                          DumpRsltToJsonOnMemQue()                         */
-/*****************************************************************************/
-
-BufList* PGAccessor::DumpRsltToJsonOnMemQue()
-{
-    if(!rsltQue_)
-    {
-        std::cout<<"BufList is Null"<<std::endl;
-        return NULL;
-    }
-    
-    //
-    // Dump Json Header
-    //
-    char* headerBuf = NULL;
-    int bufLen = 0;
-    GetJsonHeader(&headerBuf,bufLen);
-
-    //std::pair<char*, int> plistHeaderNode(headerBuf,bufLen);
-    std::pair<char*, int> *plistHeaderNode = new pair<char*,int>(headerBuf,bufLen);
-    /*
-    cout<<"push back header----------------------"<<endl;
-    cout<<"header length"<<endl<<plistHeaderNode->second<<endl;
-    cout<<"header content"<<endl<<plistHeaderNode->first<<endl;
-    */
-
-    rsltQue_->push_back(plistHeaderNode);
-    
-    //
-    // Dump Json Feature Page
-    //
-    int endFlg = 0;
-    int pageCount = 0;
-    while(!endFlg)
-    {
-        pageCount++;
-        char* featurePage = NULL;
-        int pageLen = 0;
-        endFlg = GetJsonFeaturePage(&featurePage, pageLen);
-        //std::pair<char*, int> pfeaPage(featurePage,pageLen);
-        std::pair<char*, int> *pfeaPage = new pair<char*, int>(featurePage,pageLen);
-        /*
-        cout<<"prompt from DUmpRsltToJsonOnMemQue ----------------"<<endl;
-        cout<<"feature page size: "<<endl<<pfeaPage->second<<endl;
-        cout<<"feature page content: "<<endl<<pfeaPage->first<<endl;
-        */
-
-        rsltQue_->push_back(pfeaPage);
-    }
-
-    return rsltQue_;
-
-}
-
-/*****************************************************************************/
-/*                               ConvertRsltToObj()                          */
-/*****************************************************************************/
-void* PGAccessor::ConvertRsltToObj()
-{
-
-}
-
-/*****************************************************************************/
 /*                               GetJsonHeader()                             */
 /*****************************************************************************/
 
 void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
 {
-    char pszstackBuf[1024*1024];
-    memset(pszstackBuf,0,1024*1024);
+    char pszstackBuf[1024*1024*5];
+    memset(pszstackBuf,0,1024*1024*5);
 
     sprintf( pszstackBuf, "{\n\"type\": \"FeatureCollection\",\n" );
     retLen = strlen(pszstackBuf);
@@ -298,6 +343,8 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
 /* ------------------------------------------------------------------------- */
 /*      Serialize metadata                                                   */
 /* ------------------------------------------------------------------------- */
+    if(NULL==pRsltLayer_)
+        return;
     OGRSpatialReference *poSRS = pRsltLayer_->GetSpatialRef();
     if (poSRS)
     {
@@ -345,6 +392,7 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
 
     // copy data from stack to heap.
     char* pszheapHead = (char*)malloc(retLen); 
+    memset(pszheapHead,0,retLen);
     strcpy(pszheapHead,pszstackBuf);
 
     *outFlow = pszheapHead;
@@ -356,11 +404,13 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
 
 int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
 {
-    // allocate stack memory
-    char pszstackBuf[1024*1024*8];
-    memset(pszstackBuf,0,1024*1024*8);
-    char fBuf[1024*100];
-    memset(fBuf,0,1024*100);
+    if(NULL==pRsltLayer_)
+        return -1;
+    // allocate temp memory
+    char* pszpageBuf = (char*)malloc(1024*1024*12);
+    memset(pszpageBuf,0,1024*1024*12);
+    char fBuf[1024*1024*3];
+    memset(fBuf,0,1024*1024*3);
 
     retLen = 0;
     int endFlg = 0;
@@ -379,7 +429,7 @@ int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
             endFlg = 1;
             sprintf( fBuf, "\n]\n}\n" );
             retLen += strlen(fBuf);
-            strcat(pszstackBuf,fBuf);
+            strcat(pszpageBuf,fBuf);
             memset(fBuf,0,strlen(fBuf));
             break;
         }
@@ -390,7 +440,7 @@ int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
             const char* pszfeature = json_object_to_json_string( poObj );
             sprintf( fBuf, ",\n%s", const_cast<char*>(pszfeature) );
             retLen += strlen( fBuf );
-            strcat(pszstackBuf,fBuf);
+            strcat(pszpageBuf,fBuf);
 
             json_object_put( poObj );
         }
@@ -398,99 +448,10 @@ int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
         memset(fBuf,0,strlen(fBuf));
     }
 
-    // copy data from stack to heap.
     char* pszheapHead = (char*)malloc(retLen);
-    strcpy(pszheapHead,pszstackBuf);//XXX:not using memcpy.
-
+    strcpy(pszheapHead,pszpageBuf);//XXX:not using memcpy.
     *outFlow = pszheapHead;
-
+    free(pszpageBuf);
     return endFlg;
-}
-
-/****************************************************************************/
-/*                        genFeatureFile()                                  */
-/****************************************************************************/
-
-FileInfo PGAccessor::genFeatureFile(const std::string& layerName, 
-        const BBOX& boundingBox, const charStream& attrColumn)
-{
-    
-    OGRSFDriver *poDriver;
-    srand(time(0));
-
-    // make all column name in one string
-    std::string columnStr = "";
-    int i=0;
-    while (i<attrColumn.size()-1)
-    {
-        columnStr+=attrColumn[i];
-        columnStr+=",";
-        i++;
-    }
-    columnStr+=attrColumn[i];
-    
-    std::cout<<columnStr<<std::endl;
-
-    /// Register all OGR drivers
-    OGRRegisterAll();
-    std::cout<<"register driver over"<<std::endl;
-
-    /// Create and Open a PostgreSQL DataSource.
-    const char *pszPGDriverName = "PostgreSQL";
-    poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszPGDriverName);
-    const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='china_osm'";
-    OGRDataSource *poPgDS = poDriver->Open(pszConnInfo);
-
-    std::cout<<"connect db and open driver over"<<std::endl;
-    /// Create and Open a GeoJSON DataSource.
-    const char *pszGJDriverName = "GeoJson";
-    poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszGJDriverName);
-    char pszOutFileName[20];
-    char randchar[10];
-    for(int i=0; i<9; i++)
-    {
-        randchar[i]='a'+(rand()%25);
-    }
-    randchar[10]='\0';
-    strcat(pszOutFileName,randchar);
-    strcat(pszOutFileName,".GJson");
-    //const char *pszOutFileName = "fileName";
-    //OGRDataSource *poGeojsonDS = poDriver->CreateDataSource(pszOutFileName);
-
-//WHERE ST_Contains(ST_MakeEnvelope(%f, %f, %f, %f),geom)",
-    /// Get Layer from DataSource query with an SQL clause.
-    CPLString* queryClause = new CPLString;
-    queryClause->Printf("SELECT * FROM %s WHERE osm_id=126186309",
-                         //columnStr.c_str(), 
-                         layerName.c_str() 
-                         // boundingBox.xmin, boundingBox.ymin, 
-                         // boundingBox.xmax, boundingBox.ymax
-                         );
-    std::cout<<queryClause->c_str()<<std::endl;
-
-    // Get a OGRPGResultLayer via executing SQL statement
-    OGRLayer  *poPgLayer = poPgDS->ExecuteSQL(queryClause->c_str(), NULL, NULL);
-    if(NULL == poPgLayer)
-    {
-        std::cout<<"executeSQL error"<<std::endl;
-    }
-    delete(queryClause);
-
-
-    OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poPgDS);
-
-    /// Construct return object.
-    FileInfo prtFile; 
-    prtFile.fileName=(std::string)pszOutFileName;
-    struct stat fStat;
-    stat(pszOutFileName,&fStat);
-    prtFile.size = (double)fStat.st_size;
-    prtFile.pos = 0;
-    prtFile.fileId = 0;
-    
-    std::cout<<"fileName:  "<<prtFile.fileName<<std::endl;
-    std::cout<<"fileSize:  "<<prtFile.size<<std::endl;
-
-    return prtFile;
 }
 
