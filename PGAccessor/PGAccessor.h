@@ -64,6 +64,7 @@ public:
     void                    SetSQL(char*);
     void                    SetQue(BufList*);
     void                    setMutex();
+    bool                    IsQueEmpty();
     
     //
     // DB and connection
