@@ -2,19 +2,18 @@
 #define PGACCESSOR_H
 
 #include <iostream>
-#include <vector>
-#include <list>
-#include <pthread.h>
+//#include <vector>
+//#include <list>
+//#include <pthread.h>
 
 #include <json.h>
 
 #include <cpl_vsi.h>
 #include <ogrsf_frmts.h>
+
 #include "misc.h"
 
 using namespace std;
-
-
 
 /****************************************************************************/
 /*                          class  PGAccessor                               */
@@ -32,10 +31,12 @@ class PGAccessor
     void*                   thirdObj_;
     BufList*                rsltQue_;
 
-    pthread_mutex_t         mutex_;
+    pthread_mutex_t*        pmutex_;
 
 public:
     PGAccessor();
+    PGAccessor(RsltNode);
+
     ~PGAccessor();
 
     //
@@ -48,7 +49,6 @@ public:
     BufList*                GetRsltList();
     bool                    IsQueEmpty();
     int                     GetNextJsonSeg(pair<char*,int>**);
-
     
     //
     // DB and connection
