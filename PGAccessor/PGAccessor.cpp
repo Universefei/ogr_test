@@ -55,6 +55,7 @@ void PGAccessor::SetSQL(const string& layerName,
     // make all column name in one string
     string columnStr = "";
     int i=0;
+    cout<<__LINE__<<endl;
     while (i<attrColumn.size()-1)
     {
         columnStr+=attrColumn[i];
@@ -63,9 +64,10 @@ void PGAccessor::SetSQL(const string& layerName,
     }
     columnStr+=attrColumn[i];
 
+    cout<<__LINE__<<endl;
     char* pszsqlstat=(char*)malloc(1024*10);
     sprintf(pszsqlstat,"SELECT %s FROM %s \
-                                  WHERE ST_Contains( ST_MakeEnvelope(%f,%f,%f,%f),way)",
+                                  WHERE ST_Contains( ST_MakeEnvelope(%f,%f,%f,%f)::geography::geometry,way)",
                          columnStr.c_str(), 
                          layerName.c_str() ,
                          boundingBox.xmin, boundingBox.ymin, 
@@ -137,6 +139,7 @@ OGRLayer* PGAccessor::ExecuteSQL()
     }
     else
     {
+        cout<<"before executing:"<<endl<<sqlStatement_<<endl;
         pRetLayer = pgDS_->ExecuteSQL(sqlStatement_, NULL, NULL);
         cout<<"executing:"<<endl<<sqlStatement_<<endl;
     }
