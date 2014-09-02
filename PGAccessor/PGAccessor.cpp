@@ -55,7 +55,6 @@ void PGAccessor::SetSQL(const string& layerName,
     // make all column name in one string
     string columnStr = "";
     int i=0;
-    cout<<__LINE__<<endl;
     while (i<attrColumn.size()-1)
     {
         columnStr+=attrColumn[i];
@@ -64,7 +63,7 @@ void PGAccessor::SetSQL(const string& layerName,
     }
     columnStr+=attrColumn[i];
 
-    cout<<__LINE__<<endl;
+    //cout<<__LINE__<<endl;
     char* pszsqlstat=(char*)malloc(1024*10);
     sprintf(pszsqlstat,"SELECT %s FROM %s \
                                   WHERE ST_Contains( ST_MakeEnvelope(%f,%f,%f,%f)::geography::geometry,way)",
@@ -139,9 +138,9 @@ OGRLayer* PGAccessor::ExecuteSQL()
     }
     else
     {
-        cout<<"before executing:"<<endl<<sqlStatement_<<endl;
+        //cout<<"before executing:"<<endl<<sqlStatement_<<endl;
         pRetLayer = pgDS_->ExecuteSQL(sqlStatement_, NULL, NULL);
-        cout<<"executing:"<<endl<<sqlStatement_<<endl;
+        //cout<<"executing:"<<endl<<sqlStatement_<<endl;
     }
     pRsltLayer_ = pRetLayer;
     return pRetLayer;
@@ -391,10 +390,13 @@ void PGAccessor::GetJsonHeader(char** outFlow, int& retLen)
     // fetch first feature
     //
     OGRFeature* pSrcFeature = pRsltLayer_->GetNextFeature();
-    json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
-    const char* pszfeature = json_object_to_json_string( poObj );
-    sprintf( pszstackBuf+retLen, "\n%s", const_cast<char*>(pszfeature) );
-    retLen = strlen(pszstackBuf);
+    if(!pSrcFeature)
+    {
+        json_object* poObj = OGRGeoJSONWriteFeature( pSrcFeature, 0, 15);
+        const char* pszfeature = json_object_to_json_string( poObj );
+        sprintf( pszstackBuf+retLen, "\n%s", const_cast<char*>(pszfeature) );
+        retLen = strlen(pszstackBuf);
+    }
 
     // copy data from stack to heap.
     char* pszheapHead = (char*)malloc(retLen); 
@@ -455,7 +457,7 @@ int PGAccessor::GetJsonFeaturePage(char** outFlow, int& retLen)
     }
 
     char* pszheapHead = (char*)malloc(retLen);
-    strcpy(pszheapHead,pszpageBuf);//XXX:not using memcpy.
+    strcpy(pszheapHead,pszpageBuf);
     *outFlow = pszheapHead;
     free(pszpageBuf);
     return endFlg;
