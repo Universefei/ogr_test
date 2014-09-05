@@ -10,66 +10,79 @@
 
 //
 //  Constructor
+//
 DataOperation::DataOperation()
 {
 }
 
 //
 // Destructor
+//
 DataOperation::~DataOperation()
 {
 }
 
+/*****************************************************************************/
+/*                          MapFieldType()                                   */
+/*****************************************************************************/
 poenumFieldType MapFieldType(OGRFieldType& pfieldDefn)
 {
     poenumFieldType retFieldType;
-
     switch(pfieldDefn)
     {
         case OFTInteger:
             retFieldType = ftInteger;
             break;
         case OFTIntegerList:
-            retFieldType = ftInteger;
+            //retFieldType = ftInteger;
             break;
         case OFTReal:
-            retFieldType = ftInteger;
+            retFieldType = ftSingle;
             break;
         case OFTRealList:
-            retFieldType = ftInteger;
+            //retFieldType = ftInteger;
             break;
         case OFTString:
-            retFieldType = ftInteger;
+            retFieldType = ftString;
             break;
         case OFTStringList:
-            efieldType = ftInteger;
+            //retFieldType = ftInteger;
             break;
         case OFTWideString:
-            efieldType = ftInteger;
+            retFieldType = ftLongString;
             break;
         case OFTWideStringList:
-            efieldType = ftInteger;
+            //retFieldType = ftInteger;
             break;
         case Binary:
-            efieldType = ftInteger;
+            retFieldType = ftBinary;
             break;
         case Date:
+            retFieldType = ftDate;
             break;
         case Time:
+            //retFieldType = ftInteger;
             break;
         case DateTime:
+            //retFieldType = ftInteger;
             break;
         case MaxType:
+            //retFieldType = ftInteger;
             break;
         default:
 
     }
+    return retFieldType;
 }
 
+/*****************************************************************************/
+/*                          MapFieldType()                                   */
+/*****************************************************************************/
 poenumFieldType MapGeomType(OGRGeomFieldDefn* pgeomDefn)
 {
-    //FIXME:
     //XXX:
+    return ftGeom;
+    //return ftBlob;
 }
 
 /*****************************************************************************/
@@ -78,7 +91,6 @@ poenumFieldType MapGeomType(OGRGeomFieldDefn* pgeomDefn)
 
 int ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
 {
-    // parameters check
     if(NULL==pOGRLayer || NULL==phlsLayer)
     {
         std::cout<<"not specify input or output Layer"<<std::endl;
@@ -140,14 +152,13 @@ int ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
     OGRFieldDefn* pfieldDefn = NULL;
     for(int fid=0;fid<fCount;++fid)
     {
-        IPo_Feature* pDistFeature = phlsLayer->CreateFeature();
+        IPo_Feature* pDstFeature = phlsLayer->CreateFeature();
         OGRFeature* pSrcFeature = pOGRLayer->GetFeature(fid);
 
-        // Dump OGR fields of a feature.
+        // Dump fields of a feature.
         for(int ifield=0;ifield<fieldCount;++ifield)
         {
             pfieldDefn = pOGRFeatureDefn->GetFieldDefn(ifield);
-
             void* value;
             switch( pfieldDefn->GetType() )
             {
@@ -155,22 +166,29 @@ int ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
                     value = pSrcFeature->GetFieldAsInteger(ifield);
                     break;
                 case OFTIntegerList:
+                    value = pSrcFeature->GetFieldAsIntegerList(ifield);
                     break;
                 case OFTReal:
+                    value = pSrcFeature->GetFieldAsDouble(ifield);
                     break;
                 case OFTRealList:
+                    value = pSrcFeature->GetFieldAsDoubleList(ifield);
                     break;
                 case OFTString:
+                    value = pSrcFeature->GetFieldAsString(ifield);
                     break;
                 case OFTStringList:
+                    value = pSrcFeature->GetFieldAsStringList(ifield);
                     break;
                 case OFTWideString:
                     break;
                 case OFTWideStringList:
                     break;
                 case Binary:
+                    value = pSrcFeature->GetFieldAsBinary(ifield);
                     break;
                 case Date:
+                    value = pSrcFeature->GetFieldAsDate(ifield);
                     break;
                 case Time:
                     break;
@@ -179,21 +197,18 @@ int ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
                 case MaxType:
                     break;
                 default:
-
-
             }
             // TODO:fill in one field value.
-            SetValue(ifield,&value)
+            pDstFeature->SetValue(ifield,&value);
         }
 
         // Dump geometries of a feature.
         for(int igeom=0;igeom<geomCount;++igeom)
         {
-            pfieldDefn = pOGRFeatureDefn->GetFieldDefn(ifield);
-
+            char* geomWkt;
+            pSrcFeature->GetGeomFieldRef(igeom)->exportToWkt(&geomWkt);
+            pDstFeature->SetValueFromString(igeom+fieldCount,
+                                             const_cast<const char*>(geomWkt));
         }
     }
 }
-
-
-
