@@ -601,53 +601,14 @@ int PGAccessor::ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
         IPo_Feature* pDstFeature = phlsLayer->CreateFeature();
         OGRFeature* pSrcFeature = pOGRLayer->GetFeature(fid);
 
+        //
         // Dump fields of a feature.
+        //
         for(int ifield=0;ifield<fieldCount;++ifield)
         {
-            pfieldDefn = pOGRFeatureDefn->GetFieldDefn(ifield);
-            //void* value;
-            switch( pfieldDefn->GetType() )
-            {
-                // XXX:Mapping field type.
-                case OFTInteger:
-                    int value = pSrcFeature->GetFieldAsInteger(ifield);
-                    pDstFeature->SetValue(ifield,&value);
-                    break;
-                case OFTIntegerList:
-                    //value = pSrcFeature->GetFieldAsIntegerList(ifield);
-                    break;
-                case OFTReal:
-                    value = pSrcFeature->GetFieldAsDouble(ifield);
-                    break;
-                case OFTRealList:
-                    value = pSrcFeature->GetFieldAsDoubleList(ifield);
-                    break;
-                case OFTString:
-                    value = pSrcFeature->GetFieldAsString(ifield);
-                    break;
-                case OFTStringList:
-                    value = pSrcFeature->GetFieldAsStringList(ifield);
-                    break;
-                case OFTWideString:
-                    break;
-                case OFTWideStringList:
-                    break;
-                case Binary:
-                    value = pSrcFeature->GetFieldAsBinary(ifield);
-                    break;
-                case Date:
-                    value = pSrcFeature->GetFieldAsDate(ifield);
-                    break;
-                case Time:
-                    break;
-                case DateTime:
-                    break;
-                case MaxType:
-                    break;
-                default:
-            }
-            // TODO:fill in one field value.
-            pDstFeature->SetValue(ifield,&value);
+            //pfieldDefn = pOGRFeatureDefn->GetFieldDefn(ifield);
+            char* pszvalue = pSrcFeature->GetFieldAsString(ifield);
+            pDstFeature->SetValueFromString(ifield,pszvalue);
         }
 
         //
@@ -857,12 +818,9 @@ int PGAccessor::ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
                     }
                 default:
                     break;
-            }
+            } 
 
-            bool ret = CoCreateGeometryObject(TYPE,(void**)&pgeom)
-            
-            pDstFeature->SetGeoPtr();
-        }
-    }
+        }// end of converting geometry.
+    } // end of converting feature.
     return 1;
 }
