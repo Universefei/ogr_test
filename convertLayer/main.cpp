@@ -1,25 +1,94 @@
-#include "DataOperation.h"
+#include "PGAccessor.h"
+#include <utility>
 #include <iostream>
-using namespace std;
+//#include <functional>
 
+using namespace std;
 
 int main()
 {
-    BBOX boundingbox;
-    boundingbox.xmin = -8584936.075;
-    boundingbox.ymin = 4700671.6768;
-    boundingbox.xmax = -8564829.929;
-    //boundingbox.ymax = 4719819.279;
-    boundingbox.ymax = 4710000.279;
-    charStream column;
-    column.push_back("gid");
-    column.push_back("wat_name");
-    //column.push_back("");
-    column.push_back("geom");
 
-    DataOperation::genFeatureFile("waterply_900913", boundingbox, column);
+/* -------------------------------------------------------------------------- */
+/*      Step1:  instanate object.                                             */
+/* -------------------------------------------------------------------------- */
+    PGAccessor* ppgIns = new PGAccessor();
 
-    cout<<"will return"<<endl;
+/* -------------------------------------------------------------------------- */
+/*      Step2:  connect database.                                             */
+/* -------------------------------------------------------------------------- */
+    cout<<"connect database"<<endl;
+    ppgIns->ConnDB("192.168.1.99",
+    //ppgIns->ConnDB("127.0.0.1",
+                    "5432",
+                    "postgres",
+                    "postgres",
+                    "china_osm");
+                    //"opengeo");
+
+/* -------------------------------------------------------------------------- */
+/*      Step3:  assemble sql statement.                                       */
+/* -------------------------------------------------------------------------- */
+    //
+    // Test set
+    //
+    //const char* pszSqlState = "SELECT * from planet_osm_polygon ";
+    //const char* pszSqlState = "SELECT * from planet_osm_polygon where building='yes'";
+    //const char* pszSqlState = "SELECT * from planet_osm_polygon where area='yes'";
+    //const char* pszSqlState = "SELECT * from planet_osm_polygon where osm_id='26331721'OR osm_id='24426593'";
+    //const char* pszSqlState = "SELECT * from dc_coastline";
+
+    //ppgIns->SetSQL(const_cast<char*>(pszSqlState));
+    //
+
+    cout<<"assemble sql"<<endl;
+    fieldVec fields;
+    cout<<__LINE__<<endl;
+    fields.push_back("*");
+    //fields[0] = "*";
+    cout<<__LINE__<<endl;
+    struct BBOX scope;
+    scope.xmin=90.00;
+    scope.ymin=35.00;
+    scope.xmax=100.00;
+    scope.ymax=45.00;
+    cout<<__LINE__<<endl;
+    ppgIns->SetSQL("planet_osm_polygon",scope,fields);
+    cout<<__LINE__<<endl;
+    
+
+/* -------------------------------------------------------------------------- */
+/*      Step4:  get result.                                                   */
+/* -------------------------------------------------------------------------- */
+    //
+    // Dump to Disk
+    //
+    /*
+    cout<<"dump result to json on disk"<<endl;
+    const char* pszJsonfile = "jsonDisk.fei";
+    ppgIns->DumpRsltToJsonOnDisk(pszJsonfile);
+    cout<<"write over"<<endl;
+    */
+
+    //
+    // Dump to memory list
+    //
+    cout<<"dump to memQue"<<endl;
+    ppgIns->DumpRsltToJsonOnMemQue();
+    cout<<"dump over"<<endl;
+
+    BufList* pList = ppgIns->GetRsltList();
+    int listSize = pList->size();
+
+    pair<char*, int>* plistNode;
+    while(!ppgIns->GetNextJsonSeg(&plistNode))
+    {
+        cout<<"show size:       "<<plistNode->second<<endl;
+        cout<<"show text:       "<<plistNode->first<<endl;
+
+    }
+    cout<<"list node number:    "<<listSize<<endl;
+
+    delete ppgIns;
     return 0;
 }
 
