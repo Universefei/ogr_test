@@ -1,11 +1,19 @@
 #include "ogr_feature.h"
 
-typedef struct scrCoord
+struct scrCoord
 {
     double x;
     double y;
     double z;
 };
 
-void getPoint(OGRFeature* pFeature, int* numPoints, struct scrCoord** pCoords);
-void destroy();
+struct pointStr
+{
+	int numPoints;
+	struct scrCoord* pCoords;
+};
+
+struct pointStr
+getPoints(OGRFeature* pFeature);
+
+void destroy(pointStr*);

@@ -1,10 +1,15 @@
+// pgacc.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+
 // main.cpp : Defines the entry point for the console application.
 //
 #include "stdafx.h"
 
 #include "ogrsf_frmts.h"
 //#include "ogr_core.h"
-#include "getPoints.h"
+//#include "getPoints.h"
 
 #include <iostream>
 using namespace std;
@@ -30,7 +35,8 @@ int main(int argc, char* argv[])
 
     /// Open PostgreSQL database and establish connection.
     OGRDataSource *poDS;
-    const char *pszConnInfo = "PG: host='10.61.124.229' port='5432' user='postgres' password='postgres' dbname='opengeo'";
+    //const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='china_osm'";
+	const char *pszConnInfo = "PG: host='10.61.124.229' port='5432' user='postgres' password='postgres' dbname='opengeo'";
     poDS = poDriver->Open(pszConnInfo);
     if(NULL == poDS)
     {
@@ -85,20 +91,54 @@ int main(int argc, char* argv[])
     int idxFeature = 0;
     while( (poFeature = poLayer->GetNextFeature()) != NULL )
     {
-		cout<<"------------------feature line------------------"<<endl;
 
-		pointStr feaPoints = getPoints(poFeature);
-		for(int i=0; i<feaPoints.numPoints; ++i)
-		{
-			cout<<"X="<<feaPoints.pCoords[i].x<<" ";
-			cout<<"Y="<<feaPoints.pCoords[i].y<<" ";
-			cout<<"Z="<<feaPoints.pCoords[i].z<<endl;
-		}
 
-		//destroy(&feaPoints);
-	}
+	/*
+		srcCoord* pPoints;
+		int numPoint;
+		getPoints(poFeature,&numPoint,&pPoints);
 
-	
+		delete[] Points;
+		*/
+
+
+        /// Get Attribute fields.
+        int iField;
+        int iFieldAmount = poFDefn->GetFieldCount();
+		printf("%d th Feature \n", idxFeature);
+        for( iField = 0; iField < iFieldAmount; iField++ )
+        {
+            
+            OGRFieldDefn *poFieldDefn = poFDefn->GetFieldDefn( iField );
+
+            if( poFieldDefn->GetType() == OFTInteger )
+                printf( "%d,", poFeature->GetFieldAsInteger( iField ) );
+            else if( poFieldDefn->GetType() == OFTReal )
+                printf( "%.3f,", poFeature->GetFieldAsDouble(iField) );
+            else if( poFieldDefn->GetType() == OFTString )
+                printf( "%s,", poFeature->GetFieldAsString(iField) );
+            else
+                printf( "%s,", poFeature->GetFieldAsString(iField) );
+        }
+
+        /// Get Geometry of Feature.
+        OGRGeometry *poGeometry;
+        poGeometry = poFeature->GetGeometryRef();
+        if( poGeometry != NULL 
+                && wkbFlatten(poGeometry->getGeometryType()) == wkbPoint )
+        {
+            OGRPoint *poPoint = (OGRPoint *) poGeometry;
+
+            printf( "%.3f,%3.f\n", poPoint->getX(), poPoint->getY() );
+        }
+        else
+        {
+            printf( "no point geometry\n" );
+        }
+        OGRFeature::DestroyFeature( poFeature );
+
+		        idxFeature++;
+    }
 	OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poDS);
 	return 0;
 }
