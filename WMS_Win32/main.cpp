@@ -7,44 +7,37 @@
 #include "getPoints.h"
 
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
 int main(int argc, char* argv[])
 {
-    /// Register all OGR drivers
+	/// Step1: Get Driver 
+	/// =================
     OGRRegisterAll();
-    printf("register complete\n");
-
-    /// Get PostgreSQL driver throught Singleton Manager of OGRSFDriverRegistrar.
     const char *pszDriverName = "PostgreSQL";
     OGRSFDriver *poDriver;
     poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(pszDriverName);
-    if(NULL == poDriver)
+	if(NULL == poDriver)
     {
         printf("Can not get driver \n");
-    }
-    else
-    {
-        printf("Get Driver succeesfully\n");
+		return 0;
     }
 
-    /// Open PostgreSQL database and establish connection.
-    OGRDataSource *poDS;
-    const char *pszConnInfo = "PG: host='10.61.124.229' port='5432' user='postgres' password='postgres' dbname='opengeo'";
-    poDS = poDriver->Open(pszConnInfo);
+	/// Step2: Connect DB and get PG datasource
+	/// =======================================
+    //const char *pszConnInfo = "PG: host='10.61.124.229' port='5432' user='postgres' password='postgres' dbname='opengeo'";
+	const char *pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='dc'";
+    OGRDataSource* poDS = poDriver->Open(pszConnInfo);
     if(NULL == poDS)
     {
         printf("Can not connect to database\n");
-    }
-    else
-    {
-        printf("Connection established\n");
+		return 0;
     }
 
-    /// Get Layer from DataSource.
+    /// Step3: Get Layer through SQL statement.
+	/// =======================================
     OGRLayer  *poLayer;
-    ///  Coder have 3 method in OGRDataSource to generate a OGRLayer.
-    /// \===========================================================
     /// [1] GetLayer(int)
     /// [2] GetLayerByName("Layer_name")
     /// [3] ExecuteSQL(const char*, OGRGeometry * pSpatialRef, )
@@ -52,12 +45,13 @@ int main(int argc, char* argv[])
     //poLayer = poDS->GetLayer(int);
     //poLayer = poDS->GetLayerByName( "waterply_900913" );
     //const char *pszSQLCommand = "SELECT ST_AsText(geom) as geomWKT  FROM waterply_900913 WHERE ST_Contains( ST_MakeEnvelope(-8584936,4691869,-8561767,4710000),geom)";
-	
 	//const char* pszSQLCommand = "SELECT * from planet_osm_polygon where osm_id='26331721'OR osm_id='24426593'";
+	const char* pszSQLCommand = "SELECT * from osm_waterareas ";
+	//const char* pszSQLCommand = "select st_astext(geom) from osm_roads where gid=12";
 	//const char* pszSQLCommand = "SELECT * from planet_osm_polygon where osm_id='9999999'";
     //const char* pszSQLCommand = "select * from planet_osm_polygon where st_contains(st_makeenvelope(90.0, 35.0, 100.0, 40.0)::geography::geometry,way)";
 	//const char *pszSQLCommand = "SELECT ST_AsText(geom) As fei FROM waterply_900913 where gid=3";
-    const char* pszSQLCommand = "select * from osm_places";
+    //const char* pszSQLCommand = "select * from osm_places";
 
 	poLayer = poDS->ExecuteSQL(pszSQLCommand, NULL, NULL);
 
@@ -65,13 +59,8 @@ int main(int argc, char* argv[])
     {
         printf("Get Result Layers failed\n");
     }
-    else
-    {
-        printf("Get Result Layer succussful\n");
-    }
 
-    /// Set Query statement here in OGRResultLayer.
-
+   
     /// Get Layer metadata.
     OGRFeatureDefn *poFDefn = poLayer->GetLayerDefn();
     if(NULL != poFDefn)
@@ -80,6 +69,7 @@ int main(int argc, char* argv[])
     }
 
     /// Get Feature from Layer.
+	/// =======================
     OGRFeature *poFeature;
     poLayer->ResetReading();
     int idxFeature = 0;
@@ -90,15 +80,12 @@ int main(int argc, char* argv[])
 		pointStr feaPoints = getPoints(poFeature);
 		for(int i=0; i<feaPoints.numPoints; ++i)
 		{
-			cout<<"X="<<feaPoints.pCoords[i].x<<" ";
-			cout<<"Y="<<feaPoints.pCoords[i].y<<" ";
-			cout<<"Z="<<feaPoints.pCoords[i].z<<endl;
+			cout<<"X="<<setprecision(12)<<feaPoints.pCoords[i].x<<" ";
+			cout<<"Y="<<setprecision(12)<<feaPoints.pCoords[i].y<<" ";
+			cout<<"Z="<<setprecision(12)<<feaPoints.pCoords[i].z<<endl;
 		}
-
-		//destroy(&feaPoints);
+		destroyPointsStr(&feaPoints);
 	}
-
-	
 	OGRSFDriverRegistrar::GetRegistrar()->ReleaseDataSource(poDS);
 	return 0;
 }

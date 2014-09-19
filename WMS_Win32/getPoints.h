@@ -11,9 +11,21 @@ struct pointStr
 {
 	int numPoints;
 	struct scrCoord* pCoords;
+	int* RingSep;
+	int numRings;
 };
 
 struct pointStr
 getPoints(OGRFeature* pFeature);
 
-void destroy(pointStr*);
+void destroyPointsStr(pointStr*);
+
+
+
+
+
+
+
+
+
+
