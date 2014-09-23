@@ -34,13 +34,14 @@ int main()
     //const char* pszSqlState = "SELECT * from planet_osm_polygon ";
     //const char* pszSqlState = "SELECT * from planet_osm_polygon where building='yes'";
     //const char* pszSqlState = "SELECT * from planet_osm_polygon where area='yes'";
-    //const char* pszSqlState = "SELECT * from planet_osm_polygon where osm_id='26331721'OR osm_id='24426593'";
+    const char* pszSqlState = "SELECT * from planet_osm_polygon where osm_id='26331721'OR osm_id='24426593'";
     //const char* pszSqlState = "SELECT * from dc_coastline";
 
-    //ppgIns->SetSQL(const_cast<char*>(pszSqlState));
+    ppgIns->SetSQL(const_cast<char*>(pszSqlState));
     //
 
     cout<<"assemble sql"<<endl;
+    /*
     fieldVec fields;
     cout<<__LINE__<<endl;
     fields.push_back("*");
@@ -54,6 +55,7 @@ int main()
     cout<<__LINE__<<endl;
     ppgIns->SetSQL("planet_osm_polygon",scope,fields);
     cout<<__LINE__<<endl;
+    */
     
 
 /* -------------------------------------------------------------------------- */

@@ -306,7 +306,7 @@ int PGAccessor::ConvertLayer(OGRLayer* pOGRLayer, IPo_FeatureClass* phlsLayer)
         IGeo_Geometry * pgeom;
         for(int igeom=0;igeom<geomCount;++igeom)
         {
-            pGeomDf = pSrcFeature->GetGeomFieldRef(igeom);
+            pGeomDf = pSrcFeature->GetGeomFieldDefnRef(igeom);
             switch(pGeomDf->GetType())
             {
                 case wkbUnknown:
