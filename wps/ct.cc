@@ -1,7 +1,6 @@
 #include <ogrsf_frmts.h>
 #include "ogr_spatialref.h"
 #include "wps_ct.h"
-
 #include <iostream>
 using namespace std;
 
@@ -30,7 +29,7 @@ int transformate( const std::string &original_coordinate,
 /* -------------------------------------------------------------------- */
 /*      Open the input data source.                                     */
 /* -------------------------------------------------------------------- */
-    poDS = OGRSFDriverRegistrar::Open( pszDataSource, TRUE, &poDriver );
+    poDS = OGRSFDriverRegistrar::Open( pszDataSource, FALSE, &poDriver );
     if( poDS == NULL )
     {
         OGRSFDriverRegistrar    *poR = OGRSFDriverRegistrar::GetRegistrar();
@@ -145,7 +144,7 @@ int transformate( const std::string &original_coordinate,
     OGRDataSource::DestroyDataSource(poDS);
     OGRDataSource::DestroyDataSource(poODS);
     return 0;
-}
+};
 
 
 /******************************************************************************
@@ -181,4 +180,4 @@ int TransformLayer( OGRLayer* poSrcLayer,
             break;
     }
     return 1;
-}
+};

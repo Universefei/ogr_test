@@ -11,5 +11,5 @@ int TransformLayer( OGRLayer* poSrcLayer,
 int transformate( const std::string &original_coordinate, 
                   const std::string &target_coordinate, 
                   const std::string &original_file, 
-                  const std::string &target_file)
+                  const std::string &target_file);
 #endif
