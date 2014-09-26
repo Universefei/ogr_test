@@ -16,8 +16,14 @@ int main()
 
     /// Create and Open a PostgreSQL DataSource.
     //pszDriverName = "PostgreSQL";
-    poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("PostgreSQL");
-    printf("caoget driver\n");
+    try
+    {
+        poDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("PostgreSQL");
+    }
+    catch(...)
+    {
+        printf("get driver error\n");
+    }
     if(poDriver == NULL)
     {
         fprintf(stderr, "GeoJSON: Get PG driver error \n");

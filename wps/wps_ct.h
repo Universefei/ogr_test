@@ -4,8 +4,8 @@
 #include <ogrsf_frmts.h>
 #include <ogr_spatialref.h>
 
-int TransformLayer( OGRLayer* poSrcLayer,
-                          int iGeomField = 0,
+OGRLayer* TransformLayer( OGRLayer* poSrcLayer,
+                          OGRLayer* poCTedLayer,
                           OGRCoordinateTransformation* poCT = NULL);
 
 int transformate( const std::string &original_coordinate, 
