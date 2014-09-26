@@ -65,7 +65,7 @@ int transformate( const std::string &original_coordinate,
         poOutputSRS = (OGRSpatialReference*)OSRNewSpatialReference(NULL);
         if( poOutputSRS->SetFromUserInput( pszOutputSRSDef ) != OGRERR_NONE )
         {
-            fprintf( stderr,  "Failed to process SRS definition: %s\n", 
+            fprintf( stderr,  "WPS_CT:Failed to process SRS definition: %s\n", 
                     pszOutputSRSDef );
             exit( 1 );
         }
@@ -79,7 +79,7 @@ int transformate( const std::string &original_coordinate,
         poSourceSRS = (OGRSpatialReference*)OSRNewSpatialReference(NULL);
         if( poSourceSRS->SetFromUserInput( pszSourceSRSDef ) != OGRERR_NONE )
         {
-            fprintf( stderr,  "Failed to process SRS definition: %s\n", 
+            fprintf( stderr,  "WPS_CT:\nFailed to process SRS definition: %s\n", 
                     pszSourceSRSDef );
             exit( 1 );
         }
@@ -89,13 +89,14 @@ int transformate( const std::string &original_coordinate,
 /*      Create a transformation object from the source to               */
 /*      destination coordinate system.                                  */
 /* -------------------------------------------------------------------- */
-    OGRCoordinateTransformation* poCT = OGRCreateCoordinateTransformation(
+    OGRCoordinateTransformation* poUserCT = OGRCreateCoordinateTransformation(
             poSourceSRS, poOutputSRS);
-    if( NULL == poCT )
+    if( NULL == poUserCT )
     {
         fprintf( stderr, "WPS_CT: create OGRCreateCoordinateTransformation error\n");
         exit(1);
     }
+    OGRCoordinateTransformation* poCT = NULL;
 
 /* -------------------------------------------------------------------- */
 /*      Process all data source layer.                                  */
@@ -111,7 +112,7 @@ int transformate( const std::string &original_coordinate,
         OGRLayer        *poLayer = poDS->GetLayer(iLayer);
         if( poLayer == NULL )
         {
-            fprintf( stderr, "FAILURE: Couldn't fetch advertised layer %d!\n",
+            fprintf( stderr, "WPS_CT: Couldn't fetch advertised layer %d!\n",
                     iLayer );
             exit( 1 );
         }
@@ -129,6 +130,20 @@ int transformate( const std::string &original_coordinate,
         if (poLayer == NULL)
             continue;
 
+       /** 
+        * if can parse input datasource layer spatial reference,
+        * ignore user input source spatial reference infomation
+        */ 
+        OGRSpatialReference     *poRealInSRS = poLayer->GetSpatialRef();
+        if( NULL != poRealInSRS)
+        {
+            poCT = OGRCreateCoordinateTransformation( 
+                    poRealInSRS, poOutputSRS);
+        }
+        poCT = poRealInSRS && poCT ? poCT:
+            poUserCT? poUserCT:NULL;
+
+        /* do the real CT */
         if( TransformLayer(poLayer, 0, poCT) != 1 )
         {
             CPLError( CE_Failure, CPLE_AppDefined, 
@@ -137,6 +152,7 @@ int transformate( const std::string &original_coordinate,
                     poLayer->GetName() );
             nRetCode = 1;
         }
+
         poODS->CopyLayer(poLayer, poLayer->GetName(), NULL);
     }
 
