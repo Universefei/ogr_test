@@ -7,12 +7,12 @@ int main (int argc, char const* argv[])
 
 {
     OGRRegisterAll();
-    const string srcFile = "input";
-    //const string srcSRS = "EPSG:900913";
-    const string srcSRS = "EPSG:4326";
+    const string srcFile = "input.900913.GeoJSON";
+    const string srcSRS = "EPSG:900913";
+    //const string srcSRS = "EPSG:4326";
     const string dstFile = "output";
-    const string dstSRS = "EPSG:900913";
-    //const string dstSRS = "EPSG:4326";
+    //const string dstSRS = "EPSG:900913";
+    const string dstSRS = "EPSG:4326";
 
     int CTErr = transformate(srcSRS, dstSRS, srcFile, dstFile);
     if(CTErr != 0 )

@@ -69,12 +69,6 @@ int transformate( const std::string &original_coordinate,
                     pszSourceSRSDef );
             exit( 1 );
         }
-        else
-        {
-            char* pszSRSInfo = NULL;
-            poSourceSRS->exportToWkt(&pszSRSInfo);
-            printf("Source SRS: \n %s \n",pszSRSInfo);
-        }
     }
 
 /* -------------------------------------------------------------------- */
@@ -88,12 +82,6 @@ int transformate( const std::string &original_coordinate,
             fprintf( stderr,  "WPS_CT:Failed to process SRS definition: %s\n", 
                     pszOutputSRSDef );
             exit( 1 );
-        }
-        else
-        {
-            char* pszSRSInfo = NULL;
-            poOutputSRS->exportToWkt(&pszSRSInfo);
-            printf("Target SRS: \n %s \n",pszSRSInfo);
         }
     }
  
@@ -143,19 +131,25 @@ int transformate( const std::string &original_coordinate,
 
        /** 
         * if can parse input datasource layer spatial reference,
-        * ignore user input source spatial reference infomation
+        * ignore user input source spatial reference information
         */ 
         OGRCoordinateTransformation* poCT = poUserCT;
-        OGRSpatialReference     *poRealInSRS = poLayer->GetSpatialRef();
-        if( NULL != poRealInSRS)
-        {
-            if(poRealInSRS != poSourceSRS)
-            {
-                poCT = OGRCreateCoordinateTransformation( 
-                        poRealInSRS, poOutputSRS);
-                printf("Input SRS is not corresponding to input file, automatically correct!");
-            }
-        }
+
+        /**
+         * can not rely on detected source spatial reference,
+         * if no spatial reference provided, handle it as EPSG:4326
+         */
+
+        /* OGRSpatialReference     *poRealInSRS = poLayer->GetSpatialRef(); */
+        /* if( NULL != poRealInSRS) */
+        /* { */
+        /*     if(poRealInSRS != poSourceSRS) */
+        /*     { */
+        /*         poCT = OGRCreateCoordinateTransformation( */ 
+        /*                 poRealInSRS, poOutputSRS); */
+        /*         printf("Input SRS is not corresponding to input file, automatically correct!\n"); */
+        /*     } */
+        /* } */
 
         /**
          * print out coordinate transformation infomation.
@@ -172,7 +166,7 @@ int transformate( const std::string &original_coordinate,
         /**
          * do the real transformation.
          */
-        OGRLayer* poCTedLayer = poODS->CreateLayer(poLayer->GetName());
+        OGRLayer* poCTedLayer = poODS->CreateLayer(poLayer->GetName(),poOutputSRS);
         TransformLayer(poLayer,poCTedLayer, poCT );
     }
 
@@ -201,10 +195,10 @@ OGRLayer* TransformLayer( OGRLayer* poSrcLayer,
     poSrcLayer->ResetReading();
     for(int i=0; i<feaCount; ++i)
     {
+        /* allocate new feature on heap.*/
         poFeature = poSrcLayer->GetNextFeature();
         if(poFeature)
         {
-            //printf("processing feature %d \n",i);
             for(int igeom=0; igeom<geomCount; ++igeom)
             {
                 poDstGeom = poFeature->GetGeomFieldRef(igeom);
@@ -212,13 +206,11 @@ OGRLayer* TransformLayer( OGRLayer* poSrcLayer,
                     OGRGeometryFactory::transformWithOptions(poDstGeom, poCT, NULL);
 
                 poFeature->SetGeomFieldDirectly(igeom, poReprojectedGeom);
-
-                char* pszwkt = NULL;
-                poFeature->GetGeomFieldRef(igeom)->exportToWkt(&pszwkt);
-                //printf("result geom wkt: \n %s \n", pszwkt);
-                delete pszwkt;
             }
             poRetLayer->CreateFeature(poFeature);
+
+            OGRFeature::DestroyFeature(poFeature);
+            poFeature = NULL;
         }
         else
             break;
