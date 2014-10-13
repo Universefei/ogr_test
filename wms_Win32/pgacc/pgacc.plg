@@ -1,0 +1,36 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: pgacc - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\univmac\AppData\Local\Temp\RSP651A.tmp" with contents
+[
+/nologo /MLd /W3 /Gm /GX /ZI /Od /I "C:\Users\univmac\Desktop\GIS\release-1600-gdal-1-11-0-mapserver-6-4-1-libs\include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fp"Debug/pgacc.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ  /c 
+"Y:\gisProj\ogr_test\WMS_Win32\pgacc\pgacc.cpp"
+]
+Creating command line "cl.exe @C:\Users\univmac\AppData\Local\Temp\RSP651A.tmp" 
+Creating temporary file "C:\Users\univmac\AppData\Local\Temp\RSP651B.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  gdal_i.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/pgacc.pdb" /debug /machine:I386 /out:"Debug/pgacc.exe" /pdbtype:sept /libpath:"C:\Users\univmac\Desktop\GIS\release-1600-gdal-1-11-0-mapserver-6-4-1-libs\lib" 
+.\Debug\StdAfx.obj
+.\Debug\pgacc.obj
+]
+Creating command line "link.exe @C:\Users\univmac\AppData\Local\Temp\RSP651B.tmp"
+<h3>Output Window</h3>
+Compiling...
+pgacc.cpp
+c:\users\univmac\desktop\gis\release-1600-gdal-1-11-0-mapserver-6-4-1-libs\include\cpl_string.h(227) : warning C4275: non dll-interface class 'std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >' used as base for dll-interface class 'CPLString'
+        c:\users\univmac\desktop\gis\release-1600-gdal-1-11-0-mapserver-6-4-1-libs\include\cpl_string.h(226) : see declaration of 'CPLString'
+Linking...
+   Creating library Debug/pgacc.lib and object Debug/pgacc.exp
+
+
+
+<h3>Results</h3>
+pgacc.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
