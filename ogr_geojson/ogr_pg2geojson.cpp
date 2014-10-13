@@ -33,7 +33,7 @@ int main()
     {
     }
 
-    const char* pszConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='dc'";
+    const char* pszConnInfo = "PG: host='192.168.1.100' port='5432' user='postgres' password='postgres' dbname='opengeo'";
     printf("caoget driver\n");
     OGRDataSource *poPgDS = poDriver->Open(pszConnInfo);
     printf("caoqu driver\n");

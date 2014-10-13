@@ -1,5 +1,6 @@
 //#include "stdafx.h"
 #include "PGAccessor.h"
+#include "PGData.h"
 #include <ogrsf_frmts.h>
 #include <iostream>
 
@@ -45,7 +46,7 @@ OGRDataSource* PGAccessor::ConnDB(OGRSFDriver* poDriver,
 }
 
 
-OGRLayer* PGAccessor::getLayer(const char *layerName,double xmin,double ymin,double xmax,double ymax,std::vector<char *> &attrColumn)
+OGRLayer* PGAccessor::getLayer(const char *layerName, int layerLevel, double xmin,double ymin,double xmax,double ymax,std::vector<char *> &attrColumn)
 {
 
 	// make all column name in one string
@@ -62,15 +63,15 @@ OGRLayer* PGAccessor::getLayer(const char *layerName,double xmin,double ymin,dou
 	}
 
    char* pszsqlstat=(char*)malloc(1024*10);
+   const char* pszTableName = GetTableName(layerName, layerLevel);
    sprintf(pszsqlstat,"SELECT %s FROM %s WHERE ST_intersects( ST_MakeEnvelope(%f,%f,%f,%f)::geography::geometry,geom)",//columnStr.c_str(),layerName.c_str(),
 		columnStr,
-		layerName,
+        pszTableName,
 		xmin, ymin, 
 		xmax, ymax
 	);  
    
     OGRLayer* pRetLayer = NULL;
-
 
 	pRetLayer = m_pgDataSource->ExecuteSQL(pszsqlstat, NULL, NULL);
 	if (!pRetLayer)

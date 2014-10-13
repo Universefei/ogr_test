@@ -18,7 +18,7 @@ public:
     PGAccessor(OGRSFDriver* poDriver);
     ~PGAccessor();
 	//OGRLayer* getLayer(const std::string& layerName,double xmin,double ymin,double xmax,double ymax,std::vector<std::string> *names);
-	OGRLayer* getLayer( const char *layerName,double xmin,double ymin,double xmax,double ymax,std::vector<char *> &attrColumn);
+	OGRLayer* getLayer( const char *layerName, int layerLevel, double xmin,double ymin,double xmax,double ymax,std::vector<char *> &attrColumn);
 private:
 	OGRDataSource*	ConnDB(OGRSFDriver* poDriver, const char* host,const char* port,const char* user,const char* password,const char* dbname );
 	OGRDataSource*	m_pgDataSource;
