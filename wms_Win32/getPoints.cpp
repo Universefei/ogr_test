@@ -50,7 +50,6 @@ getPoints(OGRFeature* pFeature)
 				break;
 			}
 
-
         case wkbPolygon:
 			{
 				OGRPolygon* pPolygon = dynamic_cast<OGRPolygon*>(pGeom);
