@@ -7,12 +7,19 @@ using namespace std;
  *                          blurLineString                                    *
  *****************************************************************************/
 
-OGRLineString* blurLineString(OGRLineString *pGeom)
+/**
+ * T->OGRLineString / OGRLinearString
+ */
+template<typename T>
+T* blurLineString(T *pGeom)
 {
     /**
      * do not new OGRLineString directly
      * because, feature delete it using gdal dynamic lib run time.
      */
+
+    if(pGeom->getGeometryType() != wkbLineString && pGeom->getGeometryType() != wkbLinearRing)
+        return NULL;
 
     /* verbose info */
     cout<<"Before blurLineString:"<<endl;
@@ -22,8 +29,9 @@ OGRLineString* blurLineString(OGRLineString *pGeom)
     CPLFree(pszWktGeom);
     pszWktGeom = NULL;
 
-    OGRGeometry* pNewGeom = OGRGeometryFactory::createGeometry( wkbLineString );
-    OGRLineString* pRetGeom = dynamic_cast< OGRLineString* >(pNewGeom);
+    /* OGRGeometry* pNewGeom = OGRGeometryFactory::createGeometry( wkbLineString ); */
+    /* OGRLineString* pRetGeom = dynamic_cast< OGRLineString* >(pNewGeom); */
+    T* pRetGeom = new T();
 
     OGRSpatialReference* pSRS = pGeom->getSpatialReference();
     pRetGeom->assignSpatialReference(pSRS);
@@ -31,7 +39,21 @@ OGRLineString* blurLineString(OGRLineString *pGeom)
     int pointCnt = pGeom->getNumPoints();
     OGRPoint* pTmpPoint = dynamic_cast< OGRPoint* >(
             OGRGeometryFactory::createGeometry(wkbPoint) );
-    for(int i=0; i<pointCnt; i+=9)
+
+    int i = 0;
+    if(pGeom->getGeometryType() == wkbLinearRing)
+    {
+        /* Must have over 4 points, and the start point equal the last one */
+        pGeom->getPoint( 0, pTmpPoint );
+        pRetGeom->addPoint( pTmpPoint );
+        pGeom->getPoint( 1, pTmpPoint );
+        pRetGeom->addPoint( pTmpPoint );
+        pGeom->getPoint( 2, pTmpPoint );
+        pRetGeom->addPoint( pTmpPoint );
+        i += 3;
+    }
+
+    for(; i<pointCnt; i+=9)
     {
         pGeom->getPoint( i, pTmpPoint );
         pRetGeom->addPoint( pTmpPoint );
@@ -40,7 +62,7 @@ OGRLineString* blurLineString(OGRLineString *pGeom)
     OGRPoint* pLastPoint = dynamic_cast< OGRPoint* >(
             OGRGeometryFactory::createGeometry(wkbPoint) );
     pGeom->getPoint( pointCnt-1, pLastPoint );
-    if( pLastPoint == pTmpPoint )
+    if( pLastPoint != pTmpPoint )
     {
         pRetGeom->addPoint( pLastPoint );
     }
@@ -56,6 +78,59 @@ OGRLineString* blurLineString(OGRLineString *pGeom)
     return pRetGeom;
 }
 
+/******************************************************************************
+ *                          blurLineString                                    *
+ *****************************************************************************/
+
+/* OGRLineString* blurLineString(OGRLineString *pGeom) */
+/* { */
+/*     /** */
+/*      * do not new OGRLineString directly */
+/*      * because, feature delete it using gdal dynamic lib run time. */
+/*      *1/ */
+
+/*     /1* verbose info *1/ */
+/*     cout<<"Before blurLineString:"<<endl; */
+/*     char* pszWktGeom = NULL; */
+/*     pGeom->exportToWkt(&pszWktGeom); */
+/*     cout<<pszWktGeom<<endl; */
+/*     CPLFree(pszWktGeom); */
+/*     pszWktGeom = NULL; */
+
+/*     OGRGeometry* pNewGeom = OGRGeometryFactory::createGeometry( wkbLineString ); */
+/*     OGRLineString* pRetGeom = dynamic_cast< OGRLineString* >(pNewGeom); */
+
+/*     OGRSpatialReference* pSRS = pGeom->getSpatialReference(); */
+/*     pRetGeom->assignSpatialReference(pSRS); */
+
+/*     int pointCnt = pGeom->getNumPoints(); */
+/*     OGRPoint* pTmpPoint = dynamic_cast< OGRPoint* >( */
+/*             OGRGeometryFactory::createGeometry(wkbPoint) ); */
+/*     for(int i=0; i<pointCnt; i+=9) */
+/*     { */
+/*         pGeom->getPoint( i, pTmpPoint ); */
+/*         pRetGeom->addPoint( pTmpPoint ); */
+/*     } */
+
+/*     OGRPoint* pLastPoint = dynamic_cast< OGRPoint* >( */
+/*             OGRGeometryFactory::createGeometry(wkbPoint) ); */
+/*     pGeom->getPoint( pointCnt-1, pLastPoint ); */
+/*     if( pLastPoint != pTmpPoint ) */
+/*     { */
+/*         pRetGeom->addPoint( pLastPoint ); */
+/*     } */
+
+/*     /1* verbose info *1/ */
+/*     cout<<"After blurLineString:"<<endl; */
+/*     pRetGeom->exportToWkt(&pszWktGeom); */
+/*     cout<<pszWktGeom<<endl; */
+/*     CPLFree(pszWktGeom); */
+/*     pszWktGeom = NULL; */
+
+/*     cout<<"before return"<<endl; */
+/*     return pRetGeom; */
+/* } */
+
 
 /******************************************************************************
  *                             blurPolygon                                    *
@@ -69,31 +144,42 @@ OGRPolygon* blurPolygon(OGRPolygon *pGeom)
      */
     OGRGeometry* pNewGeom = OGRGeometryFactory::createGeometry( wkbPolygon );
     OGRPolygon* pRetGeom = dynamic_cast< OGRPolygon* >(pNewGeom);
+    if(!pRetGeom)
+        cout<<"error to cast to OGRPolygon"<<endl;
+
 
     OGRSpatialReference* pSRS = pGeom->getSpatialReference();
     pRetGeom->assignSpatialReference(pSRS);
 
     // exterior Ring of Polygon
-    OGRLineString* pExtRing = pGeom->getExteriorRing();
-    OGRLineString* pBluredExtRing = blurLineString(pExtRing);
+    OGRLinearRing* pExtRing = pGeom->getExteriorRing();
+    OGRLinearRing* pBluredExtRing = blurLineString(pExtRing);
     OGRLinearRing* pLinearRing = dynamic_cast< OGRLinearRing* >(pBluredExtRing);
+    if(!pLinearRing)
+        cout<<"error to cast to OGRLinearRing"<<endl;
 
-    pRetGeom->addRing( pLinearRing );
+    /* if(pLinearRing) */
+    /* { */
+        cout<<__LINE__<<endl;
+        pRetGeom->addRingDirectly( pLinearRing );
+        cout<<__LINE__<<endl;
+    /* } */
 
     // interior Rings of Polygon
     int iRing = 0;
     int nRingCnt = pGeom->getNumInteriorRings();
     for( ; iRing < nRingCnt; ++iRing)
     {
-        OGRLineString* pInRing = pGeom->getInteriorRing(iRing);
-        OGRLineString* pBluredInRing = blurLineString(pInRing);
+        OGRLinearRing* pInRing = pGeom->getInteriorRing(iRing);
+        cout<<"Call blurLS in function blurPolygon "<<endl;
+        OGRLinearRing* pBluredInRing = blurLineString(pInRing);
+        cout<<"Call blurLS in function blurPolygon end"<<endl;
         OGRLinearRing* pLinearRing = dynamic_cast< OGRLinearRing* >(pBluredInRing);
 
-        pRetGeom->addRing( pLinearRing );
+        pRetGeom->addRingDirectly( pLinearRing );
     }
 
     return pRetGeom;
-
 }
 
 /******************************************************************************
@@ -238,7 +324,8 @@ int main (int argc, char const* argv[])
     }
 
     //const char*         pszPGConnInfo = "PG: host='192.168.3.201' port='5432' user='postgres' password='postgres' dbname='us_osm'";
-    const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='dc'";
+    //const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' user='postgres' password='postgres' dbname='dc'";
+    const char* pszPGConnInfo = "PG: host='219.244.118.170' port='5432' user='postgres' password='postgres' dbname='dc'";
     try
     {
         pPGDS = pPGDriver->Open(pszPGConnInfo);
