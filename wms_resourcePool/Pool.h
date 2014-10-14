@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+
 using namespace std;
 
 /******************************************************************************
@@ -7,17 +8,17 @@ using namespace std;
  *****************************************************************************/
 class Resource
 {
-    int             bUsable_;
+    int                 bUsable_;
 public:
     Resource();
     virtual ~Resource();
 
-    void            setUsed();
-    void            setFree();
-    int             bUsable();
+    void                setUsed();
+    void                setFree();
+    int                 bUsable();
 
-    virtual int     isValid() = 0;
-    virtual int     validate() = 0;
+    virtual int         isValid() = 0;
+    virtual int         validate() = 0;
 };
 
 /******************************************************************************
@@ -30,9 +31,9 @@ class ResPool
     list<Resource*>     resPool_;
     
 public:
-    ResPool();
-    ResPool(int maxSize);
-    virtual ~ResPool();
+                        ResPool();
+                        ResPool(int maxSize);
+    virtual             ~ResPool();
 
     virtual int         initPool() = 0;
     virtual void        checkResValid();

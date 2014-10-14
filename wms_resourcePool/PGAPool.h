@@ -76,15 +76,15 @@ class PGAPool : public ResPool
     OGRSFDriver*    ppgDriver_;
 
 public:
-    PGAPool();
-    PGAPool(int);
-    PGAPool( int maxSize,
-             string dbname,
-             string user,
-             string psw,
-             string host,
-             string port,
-             OGRSFDriver* ppgDriver );
+                        PGAPool();
+                        PGAPool(int);
+                        PGAPool( int maxSize,
+                                 string dbname,
+                                 string user,
+                                 string psw,
+                                 string host,
+                                 string port,
+                                 OGRSFDriver* ppgDriver );
     virtual ~PGAPool();
 
     //
