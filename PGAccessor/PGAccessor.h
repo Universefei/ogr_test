@@ -19,6 +19,9 @@ using namespace std;
 /****************************************************************************/
 /*                          class  PGAccessor                               */
 /****************************************************************************/
+/**
+ * adopter design pattern & composite
+ */
 class PGAccessor
 {
     OGRDataSource*          pgDS_;
@@ -40,7 +43,6 @@ public:
 
     //
     // geter and setters
-    //
     void                    SetSQL(char*);
     void                    SetSQL(const string& layerName,
                                         const BBOX& boundingBox,
@@ -60,8 +62,28 @@ public:
                                     const char* dbname );
 
     //
-    // Output 
+    // Database and Table Metadata accessors
+    vector<string>          getAllTablesNames();
+    int                     getTableCnt();
+    OGRFeatureDefn*         getTableFeatureDefn(string tableName) const;
+    OGRSpatialReference*    getTableSpatialRef(string tableName) const;
+
+    int                     getTableGeomFieldsCnt(string tableName) const;
+    vector<string>          getTableGeomFieldsNames(string tableName) const;
+    string                  getTableGeomFieldName(int = 0) const;
+    OGRGeomeDefn*           getTableGeomFieldDefn(int = 0) const;
+    OGRGeomeDefn*           getTableGeomFieldDefn(string geomName) const;
+
+    int                     getTableGeomFieldsCnt(string tableName) const;
+    vector<string>          getTableAttrFieldsNames(String tableName) const;
+    string                  getTableAttrFieldName(int = 0) const;
+    OGRFieldDenf*           getTableAttrFieldDefn(int = 0) const;
+    OGRFieldDenf*           getTableAttrFieldDefn( stirng AttrName) const;
+
+    // 
+
     //
+    // Output 
     void                    ShowRsltOnTerm();
     const char*             DumpRsltToJsonOnDisk(const char* filename);
     BufList*                DumpRsltToJsonOnMemQue();
@@ -72,4 +94,6 @@ private:
     int                     GetJsonFeaturePage(char** outFlow, int& retLen);
 
 };
+
+
 #endif  // PGACCESSOR_H

@@ -117,6 +117,7 @@ int transformate( const std::string &original_coordinate,
         }
         papoLayers[iLayer] = poLayer;
     }
+
 /* -------------------------------------------------------------------- */
 /*      Process specified data source layers.                           */
 /* -------------------------------------------------------------------- */
