@@ -295,13 +295,18 @@ int main (int argc, char const* argv[])
     OGRFeature *pTmpFeature = NULL;
     for(; iLyr<nLayers; ++iLyr)
     {
-        pPGLayer = pPGDS->GetLayer(iLyr);
+        //pPGLayer = pPGDS->GetLayer(iLyr);
+        char* pszSQL = (char*)malloc(sizeof(char)*1024*20);
+        sprintf(pszSQL,"SELECT * FROM %s", pPGDS->GetLayer(iLyr)->GetName());
+        free(pszSQL);
+
+        pPGLayer = pPGDS->ExecuteSQL(pszSQL, NULL, NULL);
         /* pGJDS = pGJDriver->CreateDataSource(pPGLayer->GetName()); */
         /* pOLayer = pGJDS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() ); */
 
         char* pszNewName = (char*)malloc(sizeof(char)*1204);
         memset(pszNewName,0,1024);
-        strcat(pszNewName, pPGLayer->GetName());
+        strcat(pszNewName, pPGDS->GetLayer(iLyr)->GetName());
         strcat(pszNewName, "_blured");
 
 #if defined(DUMPTOPG)
@@ -312,7 +317,7 @@ int main (int argc, char const* argv[])
         poLayer = poODS->CreateLayer(pszNewName, pPGLayer->GetSpatialRef());
 #endif
 
-        cout<<"Layer "<<iLyr<<": "<<pPGLayer->GetName()<<endl;
+        cout<<"Layer "<<iLyr<<": "<<pPGDS->GetLayer(iLyr)->GetName()<<endl;
     /* --------------------------------------------------------------------- */
     /*     Do reduce points                                                  */
     /* --------------------------------------------------------------------- */
