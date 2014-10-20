@@ -1,9 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DUMPTOSHP
+/* #define DUMPTOSHP */
 /* #define DUMPTOGML */
 /* #define DUMPTOPG */
-/* #define DUMPTOGEOJSON */
+#define DUMPTOGEOJSON
 
 #endif

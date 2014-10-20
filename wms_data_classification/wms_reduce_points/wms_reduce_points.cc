@@ -295,14 +295,17 @@ int main (int argc, char const* argv[])
     OGRFeature *pTmpFeature = NULL;
     for(; iLyr<nLayers; ++iLyr)
     {
-        pPGLayer = pPGDS->GetLayer(iLyr);
-        /* pGJDS = pGJDriver->CreateDataSource(pPGLayer->GetName()); */
-        /* pOLayer = pGJDS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() ); */
+        /* Get Layer from ExecuteSQL */
+        char* pszSQL = (char*)malloc(sizeof(char)*1024*10);
+        sprintf(pszSQL,"SELECT * from %s", pPGDS->GetLayer(iLyr)->GetName());
+        pPGLayer = pPGDS->ExecuteSQL(pszSQL, NULL, NULL);
 
+        /* Generate output file name */
         char* pszNewName = (char*)malloc(sizeof(char)*1204);
         memset(pszNewName,0,1024);
-        strcat(pszNewName, pPGLayer->GetName());
-        strcat(pszNewName, "_blured");
+        strcat(pszNewName, pPGDS->GetLayer(iLyr)->GetName());
+        strcat(pszNewName, "_blured_leap_");
+        strcat(pszNewName, "POINTLEAP");
 
 #if defined(DUMPTOPG)
         //pOLayer = poODS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() );
@@ -347,6 +350,7 @@ int main (int argc, char const* argv[])
         }
 
         free(pszNewName);
+        free(pszSQL);
 #ifndef DUMPTOPG
         OGRDataSource::DestroyDataSource(poODS);
         poODS = NULL;

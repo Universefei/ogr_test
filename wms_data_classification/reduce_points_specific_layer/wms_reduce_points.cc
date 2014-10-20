@@ -241,7 +241,12 @@ int main (int argc, char const* argv[])
         exit(1);
     }
 
-    const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' \
+    /* Env in Lab. */
+    /* const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' \ */
+    /*                              user='postgres' password='postgres' dbname='dc'"; */
+
+    /* Env on macbook air */
+    const char* pszPGConnInfo = "PG: host='10.61.125.55' port='5432' \
                                  user='postgres' password='postgres' dbname='dc'";
     try
     {
@@ -289,16 +294,19 @@ int main (int argc, char const* argv[])
     /*     every file for every OGRLayer                                     */
     /* --------------------------------------------------------------------- */
     nLayers = pPGDS->GetLayerCount();
+    cout<<"Layers Count: "<<nLayers<<endl;
     int iLyr = 0;
     char* pszSRSWkt = NULL;
     OGRLayer *poLayer = NULL;
     OGRFeature *pTmpFeature = NULL;
-    for(; iLyr<nLayers; ++iLyr)
+    for(; iLyr<1; ++iLyr)
     {
-        //pPGLayer = pPGDS->GetLayer(iLyr);
+        /* //pPGLayer = pPGDS->GetLayer(iLyr); */
         char* pszSQL = (char*)malloc(sizeof(char)*1024*20);
-        sprintf(pszSQL,"SELECT * FROM %s", pPGDS->GetLayer(iLyr)->GetName());
-        free(pszSQL);
+        /* sprintf(pszSQL,"SELECT * FROM %s WHERE 1=1", pPGDS->GetLayer(iLyr)->GetName()); */
+        sprintf(pszSQL,"SELECT * FROM osm_waterareas");
+        
+        cout<<"Execute SQL: "<<pszSQL<<endl;
 
         pPGLayer = pPGDS->ExecuteSQL(pszSQL, NULL, NULL);
         /* pGJDS = pGJDriver->CreateDataSource(pPGLayer->GetName()); */
@@ -307,7 +315,8 @@ int main (int argc, char const* argv[])
         char* pszNewName = (char*)malloc(sizeof(char)*1204);
         memset(pszNewName,0,1024);
         strcat(pszNewName, pPGDS->GetLayer(iLyr)->GetName());
-        strcat(pszNewName, "_blured");
+        /* strcat(pszNewName, "osm_landusages"); */
+        strcat(pszNewName, "_blured_leap_5");
 
 #if defined(DUMPTOPG)
         //pOLayer = poODS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() );
@@ -322,17 +331,35 @@ int main (int argc, char const* argv[])
     /*     Do reduce points                                                  */
     /* --------------------------------------------------------------------- */
         int nFeature = pPGLayer->GetFeatureCount();
+        cout<<"feature Count: "<<nFeature<<endl;
+        int nGeom = pPGLayer->GetLayerDefn()->GetGeomFieldCount();
+        int nAttr = pPGLayer->GetLayerDefn()->GetFieldCount();
+
+        /* print out attributes */
+        int iFld;
+        cout<<"Field Count: "<<nAttr<<endl;
+        for(iFld=0; iFld<nAttr; ++iFld)
+        {
+            cout<<"Field "<<iFld<<": "<<
+                pPGLayer->GetLayerDefn()->GetFieldDefn(iFld)->GetNameRef()<<endl;
+        }
+
+        /* Extract Geometry Points */
         int iFea = 0;
         for(; iFea< nFeature; ++iFea)
         {
+            DEBUG;
             pTmpFeature = pPGLayer->GetNextFeature();
+            
             if( !pTmpFeature )
                 break;
+
+            cout<<"handling layerName:          "<<pszNewName<<endl;
             cout<<"handling feature:          "<<iFea<<endl;
+            cout<<"Execute SQL: "<<pszSQL<<endl;
 
             OGRGeometry* pTmpGeom = NULL;
             OGRGeometry* pBluredGeom = NULL;
-            int nGeom = pPGLayer->GetLayerDefn()->GetGeomFieldCount();
             int iGeom = 0;
             OGRwkbGeometryType eGeomType;
             for( ; iGeom < nGeom; ++iGeom )
@@ -351,6 +378,7 @@ int main (int argc, char const* argv[])
             pTmpFeature = NULL;
         }
 
+        free(pszSQL);
         free(pszNewName);
 #ifndef DUMPTOPG
         OGRDataSource::DestroyDataSource(poODS);
