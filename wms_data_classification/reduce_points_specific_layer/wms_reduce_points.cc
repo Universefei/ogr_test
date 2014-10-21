@@ -215,13 +215,9 @@ OGRGeometry* blurGeom( OGRGeometry* pGeom)
 int main (int argc, char const* argv[])
 {
     OGRSFDriver         *pPGDriver = NULL;
-    OGRSFDriver         *pGJDriver = NULL;
-    OGRSFDriver         *pSHDriver = NULL;
     OGRSFDriver         *pDriver = NULL;
 
     OGRDataSource       *pPGDS = NULL;
-    /* OGRDataSource       *pGJDS = NULL; */
-    /* OGRDataSource       *pSHDS = NULL; */
     OGRDataSource       *poODS = NULL;
 
     OGRLayer            *pPGLayer = NULL;
@@ -233,8 +229,6 @@ int main (int argc, char const* argv[])
     OGRRegisterAll();
 
     pPGDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("PostgreSQL");
-    pGJDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("GeoJSON");
-    pSHDriver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("Shapefile");
     if(!pPGDriver)
     {
         fprintf(stderr,"GetDriver PostgreSQL error \n");
@@ -246,8 +240,10 @@ int main (int argc, char const* argv[])
     /*                              user='postgres' password='postgres' dbname='dc'"; */
 
     /* Env on macbook air */
-    const char* pszPGConnInfo = "PG: host='10.61.125.55' port='5432' \
+    const char* pszPGConnInfo = "PG: host='219.244.118.170' port='5432' \
                                  user='postgres' password='postgres' dbname='dc'";
+    /* const char* pszPGConnInfo = "PG: host='10.61.125.55' port='5432' \ */
+    /*                              user='postgres' password='postgres' dbname='dc'"; */
     try
     {
         pPGDS = pPGDriver->Open(pszPGConnInfo);
@@ -299,27 +295,22 @@ int main (int argc, char const* argv[])
     char* pszSRSWkt = NULL;
     OGRLayer *poLayer = NULL;
     OGRFeature *pTmpFeature = NULL;
-    for(; iLyr<1; ++iLyr)
+    for(; iLyr<nLayers; ++iLyr)
     {
-        /* //pPGLayer = pPGDS->GetLayer(iLyr); */
         char* pszSQL = (char*)malloc(sizeof(char)*1024*20);
-        /* sprintf(pszSQL,"SELECT * FROM %s WHERE 1=1", pPGDS->GetLayer(iLyr)->GetName()); */
-        sprintf(pszSQL,"SELECT * FROM osm_waterareas");
+        sprintf(pszSQL,"SELECT * FROM %s WHERE 1=1", pPGDS->GetLayer(iLyr)->GetName());
+        /* sprintf(pszSQL,"SELECT * FROM osm_waterareas"); */
         
         cout<<"Execute SQL: "<<pszSQL<<endl;
 
         pPGLayer = pPGDS->ExecuteSQL(pszSQL, NULL, NULL);
-        /* pGJDS = pGJDriver->CreateDataSource(pPGLayer->GetName()); */
-        /* pOLayer = pGJDS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() ); */
 
         char* pszNewName = (char*)malloc(sizeof(char)*1204);
         memset(pszNewName,0,1024);
         strcat(pszNewName, pPGDS->GetLayer(iLyr)->GetName());
-        /* strcat(pszNewName, "osm_landusages"); */
         strcat(pszNewName, "_blured_leap_5");
 
 #if defined(DUMPTOPG)
-        //pOLayer = poODS->CreateLayer( pPGLayer->GetName(), pPGLayer->GetSpatialRef() );
         poLayer = poODS->CreateLayer( pszNewName, pPGLayer->GetSpatialRef() );
 #else
         poODS = pDriver->CreateDataSource(pszNewName);
