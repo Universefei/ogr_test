@@ -236,12 +236,12 @@ int main (int argc, char const* argv[])
     }
 
     /* Env in Lab. */
-    /* const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' \ */
-    /*                              user='postgres' password='postgres' dbname='dc'"; */
+    const char* pszPGConnInfo = "PG: host='192.168.1.99' port='5432' \
+                                 user='postgres' password='postgres' dbname='dc'";
 
     /* Env on macbook air */
-    const char* pszPGConnInfo = "PG: host='219.244.118.170' port='5432' \
-                                 user='postgres' password='postgres' dbname='dc'";
+    /* const char* pszPGConnInfo = "PG: host='219.244.118.170' port='5432' \ */
+    /*                              user='postgres' password='postgres' dbname='dc'"; */
     /* const char* pszPGConnInfo = "PG: host='10.61.125.55' port='5432' \ */
     /*                              user='postgres' password='postgres' dbname='dc'"; */
     try

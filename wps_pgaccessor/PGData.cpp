@@ -46,8 +46,8 @@ const char* dataLevelTable[4][19] =
         /* Level 11 */          "osm_roads",
         /* Level 12 */          "osm_roads",
         /* Level 13 */          "osm_roads",
-        /* Level 14 */          "osm_roads",
-        /* Level 15 */          "osm_roads",
+        /* Level 14 */          "osm_roads_lv14_blured_5",
+        /* Level 15 */          "osm_roads_lv14_blured_5",
         /* Level 16 */          "osm_roads",
         /* Level 17 */          "osm_roads",
         /* Level 18 */          "osm_roads"
@@ -90,13 +90,13 @@ const char* dataLevelTable[4][19] =
         /* Level 9 */           "landusages_lv0",
         /* Level 10 */          "landusages_lv0",
         /* Level 11 */          "landusages_lv0",
-        /* Level 12 */          "landusages_lv1",
-        /* Level 13 */          "landusages_lv1",
-        /* Level 14 */          "landusages_lv1",
-        /* Level 15 */          "landusages_lv1",
-        /* Level 16 */          "landusages_lv1",
-        /* Level 17 */          "landusages_lv1",
-        /* Level 18 */          "landusages_lv1"
+        /* Level 12 */          "landusages_lv1_blured_5",
+        /* Level 13 */          "landusages_lv1_blured_5",
+        /* Level 14 */          "landusages_lv1_blured_5",
+        /* Level 15 */          "landusages_lv1_blured_5",
+        /* Level 16 */          "landusages_lv1_blured_5",
+        /* Level 17 */          "landusages_lv1_blured_5",
+        /* Level 18 */          "landusages_lv1_blured_5"
     }
 };
 
