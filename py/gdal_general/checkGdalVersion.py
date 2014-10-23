@@ -1,0 +1,8 @@
+#!/usr/bin/env python
+
+import sys
+from osgeo import gdal
+
+version_num = int(gdal.VersionInfo('VERSION_NUM'))
+if version_num < 1100000:
+    sys.exit('ERROR: Python binding of GDAL 1.10 or later required')
