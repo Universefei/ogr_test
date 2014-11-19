@@ -3,11 +3,14 @@
 from osgeo import ogr
 import os
 
-host        = "192.168.1.99"
+# host        = "192.168.1.99"
+host        = "10.61.123.42"
 port        = "5432"
 user        = "postgres"
 password    = "postgres"
 dbname      = "dc"
+
+
 ## ========================================================================= ##
 #           connect to PG
 ## ========================================================================= ##
@@ -20,8 +23,10 @@ driver = ogr.GetDriverByName("PostgreSQL")
 if driver is None:
     sys.exit("NO Driver")
 
-pgConnInfo = "PG: host='%s' port='%s' user='%s' password='%s' dbname='%s'" %\
-        (host, port, user, password, dbname)
+# pgConnInfo = "PG: host='%s' port='%s' user='%s' password='%s' dbname='%s'" %\
+#         (host, port, user, password, dbname)
+pgConnInfo = "PG: host={} port={} user={} password={} dbname={}".format(\
+        host, port, user, password, dbname)
 try:
     pgDS = ogr.Open(pgConnInfo)
 except:
@@ -46,7 +51,6 @@ except:
 # for j in layerNamesList:
 #     print j
 
-
 ## ========================================================================= ##
 #           Get specific Layer by name
 ## ========================================================================= ##
@@ -63,8 +67,8 @@ for feature in layer:
     print feature.GetField("type")
     # print feature.GetField("population")
     print feature.GetField("name")
+    print feature.DumpReadable()
     # print feature.GetField(0)
-
 
 pgDS.Destroy()
 
