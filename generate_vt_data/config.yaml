@@ -1,0 +1,8 @@
+zoom: 8
+point_amount: 100000
+layer_name: hospital
+json_path: ./tiles
+redis:
+    host: localhost
+    port: 6379
+    db: 0
