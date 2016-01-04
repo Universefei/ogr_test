@@ -107,8 +107,12 @@ if __name__ == "__main__":
     
     point_amount = config["point_amount"]
     layer_name = config["layer_name"]
-    dir_path = config["json_path"]
+    dir_name = config["json_dir_name"]
     cur_dir = os.getcwd()
+    dir_path =cur_dir.rstrip('/') + '/' + dir_name.rstrip('/')
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+    
 
-    generate_tiles(cur_dir.rstrip('/') + '/tiles', layer_name, zoom, point_amount)
+    generate_tiles(dir_path, layer_name, zoom, point_amount)
 

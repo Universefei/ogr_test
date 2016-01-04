@@ -1,7 +1,7 @@
 zoom: 8
 point_amount: 100000
 layer_name: hospital
-json_path: ./tiles
+json_dir_name: hospital
 redis:
     host: localhost
     port: 6379
