@@ -1,0 +1,6 @@
+{
+    "name": "datasource name",
+    "layers": [ 
+        "hospital"
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "name": "hospital",
+    "geometry_column": "coordinate",
+    "geometry_type": "point",
+    "srid": 4326,
+    "coord_dimension": "2",
+    "fields": [
+        {   "name": "fid",
+            "type": "int" },
+        {   "name": "name",
+            "type": "string" }
+    ]
+}
