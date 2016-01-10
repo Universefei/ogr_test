@@ -1,0 +1,30 @@
+
+# OBJ     =       ogrvtdriver.obj ogrvtdatasource.obj ogrvtlayer.obj 
+
+OBJ	=	\
+		kvfactory.obj \
+		ogrvtdriver.obj \
+		ogrvtdatasource.obj \
+		ogrvtlayer.obj \
+		ogrgeojsonreader.ob \
+		filekv.ob \
+		hashtable.ob \
+		tileid.ob \
+		vectortile.ob \
+		ogrvtlayer_add.ob \
+		geojsonvectortile.ob \
+		rediskv.ob \
+		HadoopKV.ob \
+		TileCalculator.ob \
+
+EXTRAFLAGS =	-I.. -I..\.. 
+
+GDAL_ROOT	=	..\..\..
+
+!INCLUDE $(GDAL_ROOT)\nmake.opt
+
+default:	$(OBJ)
+
+clean:
+	-del *.obj *.pdb
+
